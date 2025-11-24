@@ -1,16 +1,17 @@
 :root {
-    --bg-dark: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.7);
-    --bg-card-hover: rgba(51, 65, 85, 0.8);
+    --bg-dark: #050505;
+    --bg-card: rgba(20, 20, 20, 0.7);
+    --bg-card-hover: rgba(40, 40, 40, 0.8);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --accent-primary: #6366f1;
-    /* Indigo */
-    --accent-secondary: #8b5cf6;
-    /* Violet */
-    --accent-glow: rgba(99, 102, 241, 0.3);
+    --accent-primary: #1e40af;
+    /* Deep Blue */
+    --accent-secondary: #172554;
+    /* Midnight Blue */
+    --accent-glow: rgba(30, 64, 175, 0.3);
     --border-color: rgba(148, 163, 184, 0.1);
-    --success: #10b981;
+    --success: #0284c7;
+    /* Darker Sky Blue */
     --danger: #ef4444;
 
     --font-main: 'Inter', sans-serif;
@@ -43,8 +44,8 @@ body {
     height: 100vh;
     z-index: -1;
     background:
-        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 25%);
+        radial-gradient(circle at 15% 50%, rgba(30, 64, 175, 0.15) 0%, transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(23, 37, 84, 0.15) 0%, transparent 25%);
     pointer-events: none;
 }
 
@@ -178,18 +179,18 @@ header {
 }
 
 .icon-box.purple {
-    background: rgba(99, 102, 241, 0.2);
+    background: rgba(59, 130, 246, 0.2);
     color: var(--accent-primary);
 }
 
 .icon-box.blue {
-    background: rgba(56, 189, 248, 0.2);
-    color: #38bdf8;
+    background: rgba(14, 165, 233, 0.2);
+    color: #0ea5e9;
 }
 
 .icon-box.green {
-    background: rgba(16, 185, 129, 0.2);
-    color: var(--success);
+    background: rgba(30, 64, 175, 0.2);
+    color: var(--accent-secondary);
 }
 
 .summary-info h3 {
@@ -265,7 +266,7 @@ select:focus {
 }
 
 .stepper-btn {
-    background: rgba(99, 102, 241, 0.2);
+    background: rgba(37, 99, 235, 0.2);
     border: 1px solid var(--border-color);
     color: var(--accent-primary);
     width: 40px;
@@ -293,8 +294,8 @@ select:focus {
 
 /* Set Indicator */
 .set-indicator {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.2);
     color: var(--success);
     padding: 12px;
     border-radius: var(--radius-md);
@@ -305,7 +306,7 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 10px rgba(14, 165, 233, 0.1);
 }
 
 /* Range Input */
@@ -421,7 +422,7 @@ output {
 }
 
 .history-exercise-header {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(59, 130, 246, 0.1);
     padding: 10px 15px;
     display: flex;
     justify-content: space-between;
@@ -583,7 +584,7 @@ output {
 
 .combobox-item:hover,
 .combobox-item.active {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(59, 130, 246, 0.1);
     color: var(--text-primary);
 }
 
