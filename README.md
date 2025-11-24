@@ -12,3 +12,8 @@ A progressive web app (PWA) for tracking workouts.
 1. Visit the hosted URL (e.g., on GitHub Pages).
 2. Tap "Share" -> "Add to Home Screen" on iOS.
 3. Open the app and start logging!
+
+## Version History
+- **v1.01**: Added streak tracking (Current & Longest) and optimized mobile UI.
+- **v1**: Initial version with version tracking added.
+

@@ -118,6 +118,12 @@ header {
     }
 }
 
+@media (max-width: 600px) {
+    .user-profile span {
+        display: none;
+    }
+}
+
 /* Cards */
 .card {
     background: var(--bg-card);

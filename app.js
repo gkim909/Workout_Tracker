@@ -10,8 +10,10 @@ const chartFilter = document.getElementById('chart-filter');
 const exportBtn = document.getElementById('export-history');
 const importBtn = document.getElementById('import-history-btn');
 const importFile = document.getElementById('import-file');
-const totalWorkoutsEl = document.getElementById('total-workouts');
-const totalVolumeEl = document.getElementById('total-volume');
+const totalWorkoutsEl = document.getElementById('total-workouts'); // Kept if needed, but unused now
+const totalVolumeEl = document.getElementById('total-volume'); // Kept if needed, but unused now
+const longestStreakEl = document.getElementById('longest-streak');
+const currentStreakEl = document.getElementById('current-streak');
 const lastWorkoutDateEl = document.getElementById('last-workout-date');
 const dateInput = document.getElementById('workout-date');
 const setIndicator = document.getElementById('current-set-indicator');
@@ -289,20 +291,96 @@ function renderHistory() {
     });
 }
 
-function updateSummary() {
-    totalWorkoutsEl.textContent = workouts.length;
 
-    const totalVolume = workouts.reduce((acc, curr) => {
-        return acc + (curr.reps * curr.weight);
-    }, 0);
-    totalVolumeEl.textContent = formatNumber(totalVolume) + ' lbs';
+function updateSummary() {
+    const streaks = calculateStreaks();
+    longestStreakEl.textContent = `${streaks.longest} Days`;
+    currentStreakEl.textContent = `${streaks.current} Days`;
 
     if (workouts.length > 0) {
-        const lastDate = new Date(workouts[0].date);
+        // Sort by date descending to get the latest
+        const sortedByDate = [...workouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const lastDate = new Date(sortedByDate[0].date);
         lastWorkoutDateEl.textContent = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     } else {
         lastWorkoutDateEl.textContent = 'Never';
     }
+}
+
+function calculateStreaks() {
+    if (workouts.length === 0) return { current: 0, longest: 0 };
+
+    // Get unique dates, sorted ascending
+    const uniqueDates = [...new Set(workouts.map(w => new Date(w.date).toISOString().split('T')[0]))].sort();
+
+    if (uniqueDates.length === 0) return { current: 0, longest: 0 };
+
+    let longestStreak = 0;
+    let currentStreak = 0;
+    let tempStreak = 0;
+    let prevDate = null;
+
+    // Calculate Longest Streak
+    for (const dateStr of uniqueDates) {
+        const currentDate = new Date(dateStr);
+
+        if (prevDate) {
+            const diffTime = Math.abs(currentDate - prevDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                tempStreak++;
+            } else {
+                tempStreak = 1;
+            }
+        } else {
+            tempStreak = 1;
+        }
+
+        if (tempStreak > longestStreak) {
+            longestStreak = tempStreak;
+        }
+
+        prevDate = currentDate;
+    }
+
+    // Calculate Current Streak
+    // Check backwards from today or the last workout date
+    // If the last workout was today or yesterday, the streak is active.
+    // Otherwise, it's broken (0), unless we want to show the streak up to the last workout?
+    // User requirement: "Workout Streaks counts the consecutive days of logging. Restart the count if the days are cut."
+    // Usually "Current Streak" implies an active streak. If I worked out 5 days in a row but stopped a month ago, is my current streak 5 or 0?
+    // Standard app behavior: 0 if broken. However, to be encouraging, sometimes it shows the streak ending on the last workout.
+    // Let's stick to: Active streak ending today or yesterday.
+
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const lastWorkoutDateStr = uniqueDates[uniqueDates.length - 1];
+
+    const today = new Date(todayStr);
+    const lastWorkoutDate = new Date(lastWorkoutDateStr);
+
+    const diffToLast = Math.floor((today - lastWorkoutDate) / (1000 * 60 * 60 * 24));
+
+    if (diffToLast <= 1) {
+        // Streak is active (logged today or yesterday)
+        // Count backwards from last workout
+        currentStreak = 1;
+        for (let i = uniqueDates.length - 1; i > 0; i--) {
+            const curr = new Date(uniqueDates[i]);
+            const prev = new Date(uniqueDates[i - 1]);
+            const diff = Math.floor((curr - prev) / (1000 * 60 * 60 * 24));
+
+            if (diff === 1) {
+                currentStreak++;
+            } else {
+                break;
+            }
+        }
+    } else {
+        currentStreak = 0;
+    }
+
+    return { current: currentStreak, longest: longestStreak };
 }
 
 function updateChartOptions() {
