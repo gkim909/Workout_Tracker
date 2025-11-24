@@ -23,8 +23,11 @@ const exerciseDropdown = document.getElementById('exercise-dropdown');
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
-    // Set default date to today
-    dateInput.valueAsDate = new Date();
+    // Set default date to today (Local Time)
+    const today = new Date();
+    // en-CA locale formats as YYYY-MM-DD which matches input type="date"
+    const localDate = today.toLocaleDateString('en-CA');
+    dateInput.value = localDate;
     loadWorkouts();
 });
 
