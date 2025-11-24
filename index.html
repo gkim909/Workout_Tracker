@@ -40,107 +40,52 @@
             </div>
         </header>
 
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="dashboard">
+                <i class="fa-solid fa-chart-pie"></i> Dashboard
+            </button>
+            <button class="tab-btn" data-tab="log">
+                <i class="fa-solid fa-plus-circle"></i> Log Workout
+            </button>
+        </div>
+
         <main>
-            <!-- Dashboard Summary -->
-            <section class="dashboard-grid">
-                <div class="card summary-card">
-                    <div class="icon-box purple">
-                        <i class="fa-solid fa-trophy"></i>
-                    </div>
-                    <div class="summary-info">
-                        <h3>Longest Streak</h3>
-                        <p id="longest-streak">0 Days</p>
-                    </div>
-                </div>
-                <div class="card summary-card">
-                    <div class="icon-box blue">
-                        <i class="fa-solid fa-fire"></i>
-                    </div>
-                    <div class="summary-info">
-                        <h3>Workout Streak</h3>
-                        <p id="current-streak">0 Days</p>
-                    </div>
-                </div>
-                <div class="card summary-card">
-                    <div class="icon-box green">
-                        <i class="fa-solid fa-calendar-check"></i>
-                    </div>
-                    <div class="summary-info">
-                        <h3>Last Workout</h3>
-                        <p id="last-workout-date">Never</p>
-                    </div>
-                </div>
-            </section>
-
-            <div class="content-split">
-                <!-- Left Column: Log & History -->
-                <div class="left-col">
-                    <!-- Log Workout Form -->
-                    <section class="card form-section">
-                        <div class="card-header">
-                            <h2><i class="fa-solid fa-plus-circle"></i> Log Workout</h2>
+            <!-- Dashboard Tab -->
+            <div id="tab-dashboard" class="tab-pane active">
+                <!-- Dashboard Summary -->
+                <section class="dashboard-grid">
+                    <div class="card summary-card">
+                        <div class="icon-box purple">
+                            <i class="fa-solid fa-trophy"></i>
                         </div>
-                        <form id="workout-form">
-                            <div class="form-group">
-                                <label for="workout-date">Date</label>
-                                <input type="date" id="workout-date" required>
-                            </div>
+                        <div class="summary-info">
+                            <h3>Longest Streak</h3>
+                            <p id="longest-streak">0 Days</p>
+                        </div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="icon-box blue">
+                            <i class="fa-solid fa-fire"></i>
+                        </div>
+                        <div class="summary-info">
+                            <h3>Workout Streak</h3>
+                            <p id="current-streak">0 Days</p>
+                        </div>
+                    </div>
+                    <div class="card summary-card">
+                        <div class="icon-box green">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="summary-info">
+                            <h3>Last Workout</h3>
+                            <p id="last-workout-date">Never</p>
+                        </div>
+                    </div>
+                </section>
 
-                            <div class="form-group">
-                                <label for="exercise">Exercise Name</label>
-                                <div class="combobox-wrapper">
-                                    <input type="text" id="exercise" placeholder="e.g. Bench Press" required
-                                        autocomplete="off">
-                                    <button type="button" id="exercise-toggle" class="combobox-toggle" tabindex="-1">
-                                        <i class="fa-solid fa-chevron-down"></i>
-                                    </button>
-                                    <ul id="exercise-dropdown" class="combobox-dropdown"></ul>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="reps">Reps</label>
-                                    <div class="stepper-control">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('reps', -1)"><i
-                                                class="fa-solid fa-minus"></i></button>
-                                        <input type="number" id="reps" placeholder="0" min="1" required>
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('reps', 1)"><i
-                                                class="fa-solid fa-plus"></i></button>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Current Set</label>
-                                    <div id="current-set-indicator" class="set-indicator">Set 1</div>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="weight">Weight (lbs)</label>
-                                    <div class="stepper-control">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('weight', -5)"><i
-                                                class="fa-solid fa-minus"></i></button>
-                                        <input type="number" id="weight" placeholder="0" min="0" step="0.5" required>
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('weight', 5)"><i
-                                                class="fa-solid fa-plus"></i></button>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="intensity">Intensity (1-10)</label>
-                                    <input type="range" id="intensity" min="1" max="10" value="5"
-                                        oninput="this.nextElementSibling.value = this.value">
-                                    <output>5</output>
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn-primary">
-                                <i class="fa-solid fa-save"></i> Save Workout
-                            </button>
-                        </form>
-                    </section>
-
-                    <!-- Recent History -->
+                <div class="content-split">
+                    <!-- Recent History (Full Width in Dashboard Tab) -->
                     <section class="card history-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent History</h2>
@@ -160,10 +105,8 @@
                             </div>
                         </div>
                     </section>
-                </div>
 
-                <!-- Right Column: Analytics -->
-                <div class="right-col">
+                    <!-- Analytics (Full Width in Dashboard Tab) -->
                     <section class="card analytics-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-chart-line"></i> Progress Analytics</h2>
@@ -177,9 +120,91 @@
                     </section>
                 </div>
             </div>
+
+            <!-- Log Workout Tab -->
+            <div id="tab-log" class="tab-pane">
+                <section class="card form-section" style="max-width: 600px; margin: 0 auto;">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-dumbbell"></i> Log Workout</h2>
+                    </div>
+                    <form id="workout-form">
+                        <div class="form-group">
+                            <label for="workout-date">Date</label>
+                            <input type="date" id="workout-date" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exercise">Exercise Name</label>
+                            <div class="combobox-wrapper">
+                                <input type="text" id="exercise" placeholder="e.g. Bench Press" required
+                                    autocomplete="off">
+                                <button type="button" id="exercise-toggle" class="combobox-toggle" tabindex="-1">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <ul id="exercise-dropdown" class="combobox-dropdown"></ul>
+                            </div>
+                            <!-- Exercise History (Last 5) -->
+                            <div id="exercise-history" class="mini-history"
+                                style="display: none; margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary);">
+                                <!-- Injected via JS -->
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reps">Reps</label>
+                                <div class="stepper-control">
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', -1)"><i
+                                            class="fa-solid fa-minus"></i></button>
+                                    <input type="number" id="reps" placeholder="0" min="1" required>
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', 1)"><i
+                                            class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Current Set</label>
+                                <div id="current-set-indicator" class="set-indicator">Set 1</div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="weight">Weight (lbs)</label>
+                                <div class="stepper-control">
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', -5)"><i
+                                            class="fa-solid fa-minus"></i></button>
+                                    <input type="number" id="weight" placeholder="0" min="0" step="0.5" required>
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', 5)"><i
+                                            class="fa-solid fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="intensity">Intensity (1-10)</label>
+                                <input type="range" id="intensity" min="1" max="10" value="5"
+                                    oninput="this.nextElementSibling.value = this.value">
+                                <output>5</output>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-save"></i> Save Workout
+                        </button>
+                    </form>
+
+                    <!-- Today's History Summary -->
+                    <div id="todays-history"
+                        style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                        <h3 style="font-size: 1rem; color: var(--text-primary); margin-bottom: 15px;"><i
+                                class="fa-solid fa-calendar-day"></i> Today's Workouts</h3>
+                        <div id="todays-history-list" class="history-list" style="max-height: 300px;">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1
+            v1.03
         </footer>
     </div>
 

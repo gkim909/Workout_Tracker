@@ -89,9 +89,29 @@ exportBtn.addEventListener('click', exportWorkouts);
 importBtn.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', importWorkouts);
 
+// Tab Switching
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabPanes = document.querySelectorAll('.tab-pane');
+
+tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // Remove active class from all
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+
+        // Add active class to clicked btn
+        btn.classList.add('active');
+
+        // Show corresponding pane
+        const tabId = btn.getAttribute('data-tab');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+    });
+});
+
 // Combobox Event Listeners
 exerciseInput.addEventListener('input', (e) => {
     updateSetIndicator();
+    renderExerciseHistory();
     filterExercises(e.target.value);
     showDropdown();
 });
@@ -119,7 +139,10 @@ document.addEventListener('click', (e) => {
     }
 });
 
-document.getElementById('workout-date').addEventListener('change', updateSetIndicator);
+document.getElementById('workout-date').addEventListener('change', () => {
+    updateSetIndicator();
+    renderTodaysHistory();
+});
 
 // Delete Workout
 window.deleteWorkout = function (id) {
@@ -195,7 +218,8 @@ function getNextSetNumber(exercise, dateStr) {
 }
 
 function updateSetIndicator() {
-    const exercise = document.getElementById('exercise').value.trim();
+    const exerciseRaw = document.getElementById('exercise').value.trim();
+    const exercise = toTitleCase(exerciseRaw);
     const dateStr = document.getElementById('workout-date').value;
 
     if (exercise && dateStr) {
@@ -209,6 +233,103 @@ function updateSetIndicator() {
 function updateUI() {
     renderHistory();
     updateSummary();
+    renderTodaysHistory();
+    renderExerciseHistory();
+}
+
+function renderTodaysHistory() {
+    const list = document.getElementById('todays-history-list');
+    const dateStr = document.getElementById('workout-date').value;
+    if (!list || !dateStr) return;
+
+    list.innerHTML = '';
+
+    // Filter workouts for this date
+    const todaysWorkouts = workouts.filter(w => {
+        const wDate = new Date(w.date).toISOString().split('T')[0];
+        return wDate === dateStr;
+    }).sort((a, b) => {
+        // Sort by time added (id) or set number
+        return a.id - b.id;
+    });
+
+    if (todaysWorkouts.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No workouts logged for this date.</p>';
+        return;
+    }
+
+    // Group by Exercise
+    const grouped = {};
+    todaysWorkouts.forEach(w => {
+        if (!grouped[w.exercise]) grouped[w.exercise] = [];
+        grouped[w.exercise].push(w);
+    });
+
+    Object.keys(grouped).forEach(ex => {
+        const group = document.createElement('div');
+        group.style.marginBottom = '10px';
+        group.innerHTML = `<h4 style="color: var(--accent-primary); font-size: 0.9rem; margin-bottom: 5px;">${ex}</h4>`;
+
+        grouped[ex].forEach(w => {
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.padding = '5px 10px';
+            item.style.background = 'rgba(255,255,255,0.05)';
+            item.style.marginBottom = '2px';
+            item.style.borderRadius = '4px';
+            item.style.fontSize = '0.85rem';
+            item.innerHTML = `
+                <span>Set ${w.setNumber || '?'}</span>
+                <span>${w.reps} x ${w.weight} lbs</span>
+            `;
+            group.appendChild(item);
+        });
+        list.appendChild(group);
+    });
+}
+
+function renderExerciseHistory() {
+    const container = document.getElementById('exercise-history');
+    const exerciseRaw = document.getElementById('exercise').value.trim();
+    const exercise = toTitleCase(exerciseRaw);
+
+    if (!container) return;
+
+    if (!exercise) {
+        container.style.display = 'none';
+        return;
+    }
+
+    // Filter workouts for this exercise
+    const history = workouts
+        .filter(w => w.exercise === exercise)
+        .sort((a, b) => new Date(b.date) - new Date(a.date)); // Descending date
+
+    if (history.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    const last5 = history.slice(0, 5);
+
+    let html = '<table style="width: 100%; text-align: left; border-collapse: collapse;">';
+    html += '<thead><tr><th style="padding-bottom: 5px; color: var(--accent-secondary);">Date</th><th style="color: var(--accent-secondary);">Set</th><th style="color: var(--accent-secondary);">Reps</th><th style="color: var(--accent-secondary);">Lbs</th></tr></thead><tbody>';
+
+    last5.forEach(w => {
+        const date = new Date(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        html += `
+            <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
+                <td style="padding: 4px 0;">${date}</td>
+                <td>${w.setNumber || 1}</td>
+                <td>${w.reps}</td>
+                <td>${w.weight}</td>
+            </tr>
+        `;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 function renderHistory() {
@@ -628,6 +749,7 @@ function createDropdownItem(text) {
         exerciseInput.value = text;
         hideDropdown();
         updateSetIndicator();
+        renderExerciseHistory();
     });
     exerciseDropdown.appendChild(item);
 }
