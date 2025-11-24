@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitTrack | Premium Workout Tracker</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-glow"></div>
+
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-dumbbell"></i>
+                <h1>FitTrack</h1>
+            </div>
+            <div class="user-profile">
+                <span>Welcome Back</span>
+                <div class="avatar"><i class="fa-solid fa-user"></i></div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Dashboard Summary -->
+            <section class="dashboard-grid">
+                <div class="card summary-card">
+                    <div class="icon-box purple">
+                        <i class="fa-solid fa-fire"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>Total Workouts</h3>
+                        <p id="total-workouts">0</p>
+                    </div>
+                </div>
+                <div class="card summary-card">
+                    <div class="icon-box blue">
+                        <i class="fa-solid fa-weight-hanging"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>Total Volume</h3>
+                        <p id="total-volume">0 lbs</p>
+                    </div>
+                </div>
+                <div class="card summary-card">
+                    <div class="icon-box green">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <div class="summary-info">
+                        <h3>Last Workout</h3>
+                        <p id="last-workout-date">Never</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="content-split">
+                <!-- Left Column: Log & History -->
+                <div class="left-col">
+                    <!-- Log Workout Form -->
+                    <section class="card form-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-plus-circle"></i> Log Workout</h2>
+                        </div>
+                        <form id="workout-form">
+                            <div class="form-group">
+                                <label for="workout-date">Date</label>
+                                <input type="date" id="workout-date" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="exercise">Exercise Name</label>
+                                <div class="combobox-wrapper">
+                                    <input type="text" id="exercise" placeholder="e.g. Bench Press" required
+                                        autocomplete="off">
+                                    <button type="button" id="exercise-toggle" class="combobox-toggle" tabindex="-1">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                    <ul id="exercise-dropdown" class="combobox-dropdown"></ul>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="reps">Reps</label>
+                                    <div class="stepper-control">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('reps', -1)"><i
+                                                class="fa-solid fa-minus"></i></button>
+                                        <input type="number" id="reps" placeholder="0" min="1" required>
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('reps', 1)"><i
+                                                class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Current Set</label>
+                                    <div id="current-set-indicator" class="set-indicator">Set 1</div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="weight">Weight (lbs)</label>
+                                    <div class="stepper-control">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('weight', -5)"><i
+                                                class="fa-solid fa-minus"></i></button>
+                                        <input type="number" id="weight" placeholder="0" min="0" step="0.5" required>
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('weight', 5)"><i
+                                                class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="intensity">Intensity (1-10)</label>
+                                    <input type="range" id="intensity" min="1" max="10" value="5"
+                                        oninput="this.nextElementSibling.value = this.value">
+                                    <output>5</output>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-primary">
+                                <i class="fa-solid fa-save"></i> Save Workout
+                            </button>
+                        </form>
+                    </section>
+
+                    <!-- Recent History -->
+                    <section class="card history-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent History</h2>
+                            <div class="history-actions">
+                                <button id="export-history" class="btn-text" title="Export History"><i
+                                        class="fa-solid fa-download"></i></button>
+                                <button id="import-history-btn" class="btn-text" title="Import History"><i
+                                        class="fa-solid fa-upload"></i></button>
+                                <input type="file" id="import-file" accept=".json" style="display: none;">
+                                <button id="clear-history" class="btn-text">Clear All</button>
+                            </div>
+                        </div>
+                        <div id="history-list" class="history-list">
+                            <!-- History items will be injected here -->
+                            <div class="empty-state">
+                                <p>No workouts logged yet.</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column: Analytics -->
+                <div class="right-col">
+                    <section class="card analytics-section">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-chart-line"></i> Progress Analytics</h2>
+                            <select id="chart-filter">
+                                <option value="" disabled selected>Select Exercise</option>
+                            </select>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="progressChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+
+</html>
