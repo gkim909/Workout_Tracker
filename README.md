@@ -14,6 +14,7 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.07**: Optimized UI for mobile devices with horizontal scrolling menu and better spacing.
 - **v1.06**: Added Settings tab with improved UI and Bulk Delete options.
 - **v1.05**: Updated Exercise History to only show workouts from previous dates.
 - **v1.04**: Migrated storage to IndexedDB for better performance and scalability.

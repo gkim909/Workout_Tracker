@@ -55,6 +55,12 @@ body {
     padding: 20px;
 }
 
+@media (max-width: 480px) {
+    .app-container {
+        padding: 10px;
+    }
+}
+
 /* Header */
 header {
     display: flex;
@@ -101,9 +107,33 @@ header {
 /* Tab Navigation */
 .tab-nav {
     display: flex;
-    justify-content: center;
-    gap: 20px;
+    justify-content: flex-start;
+    /* Allow items to start from left */
+    gap: 15px;
     margin-bottom: 30px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling on iOS */
+    padding-bottom: 5px;
+    /* Space for scrollbar if visible */
+    /* Hide scrollbar */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+}
+
+.tab-nav::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+}
+
+/* Center tabs if they fit, otherwise scroll */
+@media (min-width: 600px) {
+    .tab-nav {
+        justify-content: center;
+    }
 }
 
 .tab-btn {
@@ -119,6 +149,8 @@ header {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
+    /* Prevent shrinking on mobile */
 }
 
 .tab-btn:hover {
