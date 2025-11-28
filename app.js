@@ -312,6 +312,8 @@ function renderExerciseHistory() {
     const exerciseRaw = document.getElementById('exercise').value.trim();
     const exercise = toTitleCase(exerciseRaw);
 
+    const dateStr = document.getElementById('workout-date').value;
+
     if (!container) return;
 
     if (!exercise) {
@@ -319,9 +321,12 @@ function renderExerciseHistory() {
         return;
     }
 
-    // Filter workouts for this exercise
+    // Filter workouts for this exercise and BEFORE the selected date
     const history = workouts
-        .filter(w => w.exercise === exercise)
+        .filter(w => {
+            const wDate = new Date(w.date).toISOString().split('T')[0];
+            return w.exercise === exercise && wDate < dateStr;
+        })
         .sort((a, b) => new Date(b.date) - new Date(a.date)); // Descending date
 
     if (history.length === 0) {
