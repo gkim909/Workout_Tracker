@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // en-CA locale formats as YYYY-MM-DD which matches input type="date"
     const localDate = today.toLocaleDateString('en-CA');
     dateInput.value = localDate;
+
+    // Initialize DB and load workouts
     loadWorkouts();
 });
 
@@ -52,7 +54,10 @@ workoutForm.addEventListener('submit', (e) => {
     };
 
     workouts.push(newWorkout);
-    saveWorkouts();
+    db.addWorkout(newWorkout).then(() => {
+        console.log('Workout added to DB');
+    }).catch(err => console.error(err));
+
     sortWorkouts();
     updateUI();
 
@@ -69,14 +74,15 @@ workoutForm.addEventListener('submit', (e) => {
 clearHistoryBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all workout history? This cannot be undone.')) {
         workouts = [];
-        saveWorkouts();
-        updateUI();
-        if (chartInstance) {
-            chartInstance.destroy();
-            chartInstance = null;
-        }
-        updateChartOptions();
-        updateSetIndicator();
+        db.clearStore().then(() => {
+            updateUI();
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+            updateChartOptions();
+            updateSetIndicator();
+        });
     }
 });
 
@@ -148,15 +154,16 @@ document.getElementById('workout-date').addEventListener('change', () => {
 window.deleteWorkout = function (id) {
     if (confirm('Delete this set?')) {
         workouts = workouts.filter(w => w.id !== id);
-        saveWorkouts();
-        updateUI();
-        updateSetIndicator();
+        db.deleteWorkout(id).then(() => {
+            updateUI();
+            updateSetIndicator();
 
-        // Update chart if needed
-        if (chartFilter.value) {
-            renderChart(chartFilter.value);
-        }
-        updateChartOptions();
+            // Update chart if needed
+            if (chartFilter.value) {
+                renderChart(chartFilter.value);
+            }
+            updateChartOptions();
+        });
     }
 };
 
@@ -177,10 +184,21 @@ window.adjustValue = function (id, amount) {
 };
 
 // Core Functions
-function loadWorkouts() {
-    const data = localStorage.getItem('workouts');
-    if (data) {
-        workouts = JSON.parse(data);
+async function loadWorkouts() {
+    try {
+        // Migration Logic
+        const localData = localStorage.getItem('workouts');
+        if (localData) {
+            const parsed = JSON.parse(localData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                console.log('Migrating data from localStorage to IndexedDB...');
+                await db.bulkAdd(parsed);
+                localStorage.removeItem('workouts');
+                console.log('Migration complete.');
+            }
+        }
+
+        workouts = await db.getAllWorkouts();
         sortWorkouts();
         updateUI();
         updateChartOptions();
@@ -191,12 +209,12 @@ function loadWorkouts() {
             chartFilter.value = lastExercise;
             renderChart(lastExercise);
         }
+    } catch (err) {
+        console.error('Error loading workouts:', err);
     }
 }
 
-function saveWorkouts() {
-    localStorage.setItem('workouts', JSON.stringify(workouts));
-}
+// saveWorkouts function removed as we now use db operations directly
 
 function sortWorkouts() {
     workouts.sort((a, b) => {
@@ -694,11 +712,14 @@ function importWorkouts(event) {
             });
 
             if (addedCount > 0) {
-                saveWorkouts();
-                sortWorkouts();
-                updateUI();
-                updateChartOptions();
-                alert(`Successfully imported ${addedCount} workouts.`);
+                // Add new workouts to DB
+                const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
+                db.bulkAdd(newWorkouts).then(() => {
+                    sortWorkouts();
+                    updateUI();
+                    updateChartOptions();
+                    alert(`Successfully imported ${addedCount} workouts.`);
+                });
             } else {
                 alert('No new workouts found to import.');
             }
