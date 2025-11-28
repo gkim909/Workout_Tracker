@@ -167,6 +167,56 @@ window.deleteWorkout = function (id) {
     }
 };
 
+window.deleteDateGroup = function (dateKey) {
+    if (confirm(`Delete all workouts for ${dateKey}?`)) {
+        // Find workouts to delete
+        const toDelete = workouts.filter(w => {
+            const wDateKey = new Date(w.date).toLocaleDateString(undefined, {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            return wDateKey === dateKey;
+        });
+
+        const ids = toDelete.map(w => w.id);
+
+        // Update local state
+        workouts = workouts.filter(w => !ids.includes(w.id));
+
+        // Update DB
+        db.bulkDelete(ids).then(() => {
+            updateUI();
+            updateSetIndicator();
+            if (chartFilter.value) renderChart(chartFilter.value);
+            updateChartOptions();
+        });
+    }
+};
+
+window.deleteExerciseGroup = function (dateKey, exerciseName) {
+    if (confirm(`Delete all ${exerciseName} sets for ${dateKey}?`)) {
+        // Find workouts to delete
+        const toDelete = workouts.filter(w => {
+            const wDateKey = new Date(w.date).toLocaleDateString(undefined, {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            return wDateKey === dateKey && w.exercise === exerciseName;
+        });
+
+        const ids = toDelete.map(w => w.id);
+
+        // Update local state
+        workouts = workouts.filter(w => !ids.includes(w.id));
+
+        // Update DB
+        db.bulkDelete(ids).then(() => {
+            updateUI();
+            updateSetIndicator();
+            if (chartFilter.value) renderChart(chartFilter.value);
+            updateChartOptions();
+        });
+    }
+};
+
 // Stepper Logic
 window.adjustValue = function (id, amount) {
     const input = document.getElementById(id);
@@ -383,7 +433,15 @@ function renderHistory() {
 
         const dateHeader = document.createElement('div');
         dateHeader.className = 'history-date-header';
-        dateHeader.textContent = date;
+        dateHeader.style.display = 'flex';
+        dateHeader.style.justifyContent = 'space-between';
+        dateHeader.style.alignItems = 'center';
+        dateHeader.innerHTML = `
+            <span>${date}</span>
+            <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date" style="margin-left: 10px;">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
         dateGroup.appendChild(dateHeader);
 
         // Group by Exercise within Date
@@ -399,7 +457,15 @@ function renderHistory() {
 
             const exHeader = document.createElement('div');
             exHeader.className = 'history-exercise-header';
-            exHeader.innerHTML = `<h4>${exercise}</h4>`;
+            exHeader.style.display = 'flex';
+            exHeader.style.justifyContent = 'space-between';
+            exHeader.style.alignItems = 'center';
+            exHeader.innerHTML = `
+                <h4>${exercise}</h4>
+                <button class="delete-btn" onclick="deleteExerciseGroup('${date}', '${exercise.replace(/'/g, "\\'")}')" title="Delete All ${exercise}" style="font-size: 0.8rem;">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `;
             exerciseGroup.appendChild(exHeader);
 
             const setList = document.createElement('div');

@@ -48,6 +48,9 @@
             <button class="tab-btn" data-tab="log">
                 <i class="fa-solid fa-plus-circle"></i> Log Workout
             </button>
+            <button class="tab-btn" data-tab="settings">
+                <i class="fa-solid fa-cog"></i> Settings
+            </button>
         </div>
 
         <main>
@@ -89,14 +92,6 @@
                     <section class="card history-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent History</h2>
-                            <div class="history-actions">
-                                <button id="export-history" class="btn-text" title="Export History"><i
-                                        class="fa-solid fa-download"></i></button>
-                                <button id="import-history-btn" class="btn-text" title="Import History"><i
-                                        class="fa-solid fa-upload"></i></button>
-                                <input type="file" id="import-file" accept=".json" style="display: none;">
-                                <button id="clear-history" class="btn-text">Clear All</button>
-                            </div>
                         </div>
                         <div id="history-list" class="history-list">
                             <!-- History items will be injected here -->
@@ -202,9 +197,35 @@
                     </div>
                 </section>
             </div>
+
+            <!-- Settings Tab -->
+            <div id="tab-settings" class="tab-pane">
+                <section class="card settings-section" style="max-width: 600px; margin: 0 auto;">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-cog"></i> Settings</h2>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>Data Management</h3>
+                        <div class="settings-actions">
+                            <button id="export-history" class="btn-secondary" style="width: 100%; margin-bottom: 15px;">
+                                <i class="fa-solid fa-file-export"></i> Export History
+                            </button>
+                            <button id="import-history-btn" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 15px;">
+                                <i class="fa-solid fa-file-import"></i> Import History
+                            </button>
+                            <input type="file" id="import-file" accept=".json" style="display: none;">
+                            <button id="clear-history" class="btn-danger-large">
+                                <i class="fa-solid fa-trash-can"></i> Clear All Data
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.05
+            v1.06
         </footer>
     </div>
 

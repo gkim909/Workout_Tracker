@@ -83,5 +83,20 @@ const db = {
                 store.put(workout);
             });
         });
+    },
+
+    async bulkDelete(ids) {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+
+            ids.forEach(id => {
+                store.delete(id);
+            });
+        });
     }
 };
