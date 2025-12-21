@@ -15,6 +15,7 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.1**: Replaced "Avg Intensity" text with thematic Flame icons throughout the UI.
 - **v1.091**: Refined Intensity UI (colored text, full labels) and added Daily Average to Log tab.
 - **v1.09**: Replaced Intensity Graph with Calendar View, standardized UI with colored intensity badges.
 - **v1.08**: Added Intensity Analytics (Graph & Averages), improved set ordering (newest on top), and enabled deletion in Log tab.

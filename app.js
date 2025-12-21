@@ -167,6 +167,19 @@ document.getElementById('next-month').addEventListener('click', () => {
     renderCalendar();
 });
 
+document.getElementById('today-btn').addEventListener('click', () => {
+    currentCalendarDate = new Date();
+    renderCalendar();
+});
+
+document.getElementById('calendar-month-picker').addEventListener('change', (e) => {
+    const [year, month] = e.target.value.split('-');
+    if (year && month) {
+        currentCalendarDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+        renderCalendar();
+    }
+});
+
 // Delete Workout
 window.deleteWorkout = function (id) {
     if (confirm('Delete this set?')) {
@@ -371,8 +384,8 @@ function renderTodaysHistory() {
     dayHeader.style.borderBottom = '1px solid var(--border-color)';
     dayHeader.innerHTML = `
         <span style="font-weight: 600; color: var(--text-primary);">Today's Overview</span>
-        <span style="font-size: 0.9rem; font-weight: 600; color: ${dayColor};">
-            Avg Intensity: ${avgDayIntensity}
+        <span style="font-size: 0.9rem; font-weight: 600; color: ${dayColor}; display: flex; align-items: center; gap: 5px;">
+            <i class="fa-solid fa-fire"></i> ${avgDayIntensity}
         </span>
     `;
     list.appendChild(dayHeader);
@@ -389,7 +402,9 @@ function renderTodaysHistory() {
         group.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 <h4 style="color: var(--accent-primary); font-size: 0.9rem;">${ex}</h4>
-                <span style="font-size: 0.8rem; font-weight: 600; color: ${intensityColor};">Avg Intensity: ${exAvgInt}</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${intensityColor}; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-fire"></i> ${exAvgInt}
+                </span>
             </div>
         `;
 
@@ -413,7 +428,9 @@ function renderTodaysHistory() {
                     <span>${w.reps} x ${w.weight} lbs</span>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="font-size: 0.8rem; font-weight: 600; color: ${wIntColor};">Intensity: ${(w.intensity || 0).toFixed(1)}</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: ${wIntColor}; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-fire"></i> ${(w.intensity || 0).toFixed(1)}
+                    </span>
                     <button class="delete-btn" onclick="deleteWorkout(${w.id})" title="Delete Set" style="padding: 0;">
                          <i class="fa-solid fa-trash" style="font-size: 0.8rem;"></i>
                     </button>
@@ -511,15 +528,15 @@ function renderHistory() {
         const avgColor = getIntensityColor(parseFloat(avgIntensity));
 
         dateHeader.innerHTML = `
+            <span>${date}</span>
             <div style="display: flex; align-items: center; gap: 15px;">
-                <span>${date}</span>
-                <span style="font-size: 0.8rem; font-weight: 600; color: ${avgColor};">
-                    Avg Intensity: ${avgIntensity}
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${avgColor}; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-fire"></i> ${avgIntensity}
                 </span>
+                <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
             </div>
-            <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date">
-                <i class="fa-solid fa-trash"></i>
-            </button>
         `;
         dateGroup.appendChild(dateHeader);
 
@@ -546,13 +563,15 @@ function renderHistory() {
             const exIntColor = getIntensityColor(parseFloat(exAvgInt));
 
             exHeader.innerHTML = `
+                <h4>${exercise}</h4>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <h4>${exercise}</h4>
-                    <span style="font-size: 0.8rem; font-weight: 600; color: ${exIntColor};">Avg Intensity: ${exAvgInt}</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: ${exIntColor}; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-fire"></i> ${exAvgInt}
+                    </span>
+                    <button class="delete-btn" onclick="deleteExerciseGroup('${date}', '${exercise.replace(/'/g, "\\'")}')" title="Delete All ${exercise}" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>
-                <button class="delete-btn" onclick="deleteExerciseGroup('${date}', '${exercise.replace(/'/g, "\\'")}')" title="Delete All ${exercise}" style="font-size: 0.8rem;">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
             `;
             exerciseGroup.appendChild(exHeader);
 
@@ -573,8 +592,8 @@ function renderHistory() {
                         <span><i class="fa-solid fa-weight-hanging"></i> ${workout.weight} lbs</span>
                     </div>
                     <div class="set-meta">
-                        <span style="font-size: 0.85rem; font-weight: 600; color: ${getIntensityColor(workout.intensity)}; margin-right: 5px;">
-                            Intensity: ${(workout.intensity || 0).toFixed(1)}
+                        <span style="font-size: 0.85rem; font-weight: 600; color: ${getIntensityColor(workout.intensity)}; margin-right: 5px; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-fire"></i> ${(workout.intensity || 0).toFixed(1)}
                         </span>
                         <button class="delete-btn" onclick="deleteWorkout(${workout.id})" title="Delete Set">
                             <i class="fa-solid fa-trash"></i>
@@ -825,14 +844,15 @@ function renderChart(exerciseName) {
 
 function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
-    const title = document.getElementById('calendar-title');
-    if (!grid || !title) return;
+    const picker = document.getElementById('calendar-month-picker');
+    if (!grid || !picker) return;
 
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
 
-    // Update Title
-    title.textContent = new Date(year, month).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    // Update Picker Value (YYYY-MM)
+    const monthStr = (month + 1).toString().padStart(2, '0');
+    picker.value = `${year}-${monthStr}`;
 
     grid.innerHTML = '';
 
@@ -881,7 +901,11 @@ function renderCalendar() {
             div.style.borderColor = color;
             div.style.color = '#fff';
             div.classList.add('has-data');
-            div.innerHTML += `<div class="intensity-val">${avg}</div>`;
+            // Added fire icon
+            div.innerHTML += `
+                <div class="intensity-val" style="display: flex; align-items: center; gap: 2px;">
+                    <i class="fa-solid fa-fire" style="font-size: 0.6rem;"></i> ${avg}
+                </div>`;
             div.title = `Average Intensity: ${avg}`;
         }
 

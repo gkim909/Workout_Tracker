@@ -119,10 +119,12 @@
                     <div class="card-header">
                         <h2><i class="fa-solid fa-calendar-days"></i> Intensity Calendar</h2>
                         <div class="calendar-controls">
+                            <button id="today-btn" class="btn-secondary"
+                                style="font-size: 0.8rem; padding: 2px 8px; margin-right: 5px;">Today</button>
                             <button id="prev-month" class="btn-text" style="font-size: 1.2rem;"><i
                                     class="fa-solid fa-chevron-left"></i></button>
-                            <span id="calendar-title"
-                                style="font-weight: 600; min-width: 150px; text-align: center;">Month Year</span>
+                            <input type="month" id="calendar-month-picker"
+                                style="background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: var(--text-primary); font-family: inherit; font-weight: 600; font-size: 0.9rem; color-scheme: dark; padding: 2px 5px;">
                             <button id="next-month" class="btn-text" style="font-size: 1.2rem;"><i
                                     class="fa-solid fa-chevron-right"></i></button>
                         </div>
@@ -253,7 +255,7 @@
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.091
+            v1.1
         </footer>
     </div>
 
