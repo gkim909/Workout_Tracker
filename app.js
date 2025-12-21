@@ -357,6 +357,26 @@ function renderTodaysHistory() {
         grouped[w.exercise].push(w);
     });
 
+    // Calculate Day's Average Intensity
+    const totalDayIntensity = todaysWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0);
+    const avgDayIntensity = (totalDayIntensity / todaysWorkouts.length).toFixed(1);
+    const dayColor = getIntensityColor(parseFloat(avgDayIntensity));
+
+    const dayHeader = document.createElement('div');
+    dayHeader.style.display = 'flex';
+    dayHeader.style.justifyContent = 'space-between';
+    dayHeader.style.alignItems = 'center';
+    dayHeader.style.marginBottom = '15px';
+    dayHeader.style.paddingBottom = '10px';
+    dayHeader.style.borderBottom = '1px solid var(--border-color)';
+    dayHeader.innerHTML = `
+        <span style="font-weight: 600; color: var(--text-primary);">Today's Overview</span>
+        <span style="font-size: 0.9rem; font-weight: 600; color: ${dayColor};">
+            Avg Intensity: ${avgDayIntensity}
+        </span>
+    `;
+    list.appendChild(dayHeader);
+
     Object.keys(grouped).forEach(ex => {
         const group = document.createElement('div');
         group.style.marginBottom = '10px';
@@ -369,7 +389,7 @@ function renderTodaysHistory() {
         group.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                 <h4 style="color: var(--accent-primary); font-size: 0.9rem;">${ex}</h4>
-                <span class="intensity-badge" style="background: ${intensityColor};">Avg: ${exAvgInt}</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${intensityColor};">Avg Intensity: ${exAvgInt}</span>
             </div>
         `;
 
@@ -393,7 +413,7 @@ function renderTodaysHistory() {
                     <span>${w.reps} x ${w.weight} lbs</span>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <span class="intensity-badge" style="background: ${wIntColor}; font-size: 0.7rem; padding: 1px 6px;">${(w.intensity || 0).toFixed(1)}</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: ${wIntColor};">Intensity: ${(w.intensity || 0).toFixed(1)}</span>
                     <button class="delete-btn" onclick="deleteWorkout(${w.id})" title="Delete Set" style="padding: 0;">
                          <i class="fa-solid fa-trash" style="font-size: 0.8rem;"></i>
                     </button>
@@ -493,8 +513,8 @@ function renderHistory() {
         dateHeader.innerHTML = `
             <div style="display: flex; align-items: center; gap: 15px;">
                 <span>${date}</span>
-                <span class="intensity-badge" style="background: ${avgColor};">
-                    Avg: ${avgIntensity}
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${avgColor};">
+                    Avg Intensity: ${avgIntensity}
                 </span>
             </div>
             <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date">
@@ -528,7 +548,7 @@ function renderHistory() {
             exHeader.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <h4>${exercise}</h4>
-                    <span class="intensity-badge" style="background: ${exIntColor};">Avg: ${exAvgInt}</span>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: ${exIntColor};">Avg Intensity: ${exAvgInt}</span>
                 </div>
                 <button class="delete-btn" onclick="deleteExerciseGroup('${date}', '${exercise.replace(/'/g, "\\'")}')" title="Delete All ${exercise}" style="font-size: 0.8rem;">
                     <i class="fa-solid fa-trash"></i>
@@ -553,8 +573,8 @@ function renderHistory() {
                         <span><i class="fa-solid fa-weight-hanging"></i> ${workout.weight} lbs</span>
                     </div>
                     <div class="set-meta">
-                        <span class="intensity-badge" style="background: ${getIntensityColor(workout.intensity)}; border-radius: 4px;">
-                            ${(workout.intensity || 0).toFixed(1)}
+                        <span style="font-size: 0.85rem; font-weight: 600; color: ${getIntensityColor(workout.intensity)}; margin-right: 5px;">
+                            Intensity: ${(workout.intensity || 0).toFixed(1)}
                         </span>
                         <button class="delete-btn" onclick="deleteWorkout(${workout.id})" title="Delete Set">
                             <i class="fa-solid fa-trash"></i>

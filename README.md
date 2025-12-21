@@ -4,7 +4,8 @@ A progressive web app (PWA) for tracking workouts.
 
 ## Features
 - **Offline First:** Works without an internet connection.
-- **Local Storage:** Data stays on your device.
+- **Local Storage:** Data stays on your device (IndexedDB).
+- **Private:** No data is sent to the cloud, ensuring complete privacy.
 - **Installable:** Add to home screen on iOS and Android.
 - **Analytics:** Visualize your progress with charts.
 
@@ -14,14 +15,15 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.091**: Refined Intensity UI (colored text, full labels) and added Daily Average to Log tab.
 - **v1.09**: Replaced Intensity Graph with Calendar View, standardized UI with colored intensity badges.
 - **v1.08**: Added Intensity Analytics (Graph & Averages), improved set ordering (newest on top), and enabled deletion in Log tab.
 - **v1.07**: Optimized UI for mobile devices with horizontal scrolling menu and better spacing.
 - **v1.06**: Added Settings tab with improved UI and Bulk Delete options.
+- **v1.05**: Updated Exercise History to only show workouts from previous dates.
 - **v1.05**: Updated Exercise History to only show workouts from previous dates.
 - **v1.04**: Migrated storage to IndexedDB for better performance and scalability.
 - **v1.03**: Enhanced Log Workout tab with Today's History, Exercise History, and fixed Set Indicator.
 - **v1.02**: Implemented tabbed interface for better navigation.
 - **v1.01**: Added streak tracking (Current & Longest) and optimized mobile UI.
 - **v1**: Initial version with version tracking added.
-
