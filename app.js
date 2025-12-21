@@ -1,6 +1,7 @@
 // State Management
 let workouts = [];
 let chartInstance = null;
+let currentCalendarDate = new Date(); // For Calendar View
 
 // DOM Elements
 const workoutForm = document.getElementById('workout-form');
@@ -66,6 +67,7 @@ workoutForm.addEventListener('submit', (e) => {
         chartFilter.value = newWorkout.exercise;
         renderChart(newWorkout.exercise);
     }
+    renderCalendar();
     updateChartOptions();
 
     updateSetIndicator(); // Update for next set
@@ -80,6 +82,10 @@ clearHistoryBtn.addEventListener('click', () => {
                 chartInstance.destroy();
                 chartInstance = null;
             }
+            if (intensityChartInstance) {
+                intensityChartInstance = null;
+            }
+            renderCalendar();
             updateChartOptions();
             updateSetIndicator();
         });
@@ -150,6 +156,17 @@ document.getElementById('workout-date').addEventListener('change', () => {
     renderTodaysHistory();
 });
 
+// Calendar Navigation
+document.getElementById('prev-month').addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+});
+
+document.getElementById('next-month').addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+});
+
 // Delete Workout
 window.deleteWorkout = function (id) {
     if (confirm('Delete this set?')) {
@@ -162,6 +179,7 @@ window.deleteWorkout = function (id) {
             if (chartFilter.value) {
                 renderChart(chartFilter.value);
             }
+            renderCalendar();
             updateChartOptions();
         });
     }
@@ -187,6 +205,7 @@ window.deleteDateGroup = function (dateKey) {
             updateUI();
             updateSetIndicator();
             if (chartFilter.value) renderChart(chartFilter.value);
+            renderCalendar();
             updateChartOptions();
         });
     }
@@ -212,6 +231,7 @@ window.deleteExerciseGroup = function (dateKey, exerciseName) {
             updateUI();
             updateSetIndicator();
             if (chartFilter.value) renderChart(chartFilter.value);
+            renderCalendar();
             updateChartOptions();
         });
     }
@@ -250,8 +270,10 @@ async function loadWorkouts() {
 
         workouts = await db.getAllWorkouts();
         sortWorkouts();
+        sortWorkouts();
         updateUI();
         updateChartOptions();
+        renderCalendar();
 
         // Default chart view if data exists
         if (workouts.length > 0 && !chartFilter.value) {
@@ -317,8 +339,10 @@ function renderTodaysHistory() {
         const wDate = new Date(w.date).toISOString().split('T')[0];
         return wDate === dateStr;
     }).sort((a, b) => {
-        // Sort by time added (id) or set number
-        return a.id - b.id;
+        // Sort by time added (id) or set number DESCENDING logic for "oldest at bottom" (aka newest at top)
+        // Actually, user said: "I would like the sets to be showing the oldest on the bottom of the workout box rather than new sets being added to the bottom of the box."
+        // This means Newest on Top.
+        return b.id - a.id;
     });
 
     if (todaysWorkouts.length === 0) {
@@ -336,20 +360,44 @@ function renderTodaysHistory() {
     Object.keys(grouped).forEach(ex => {
         const group = document.createElement('div');
         group.style.marginBottom = '10px';
-        group.innerHTML = `<h4 style="color: var(--accent-primary); font-size: 0.9rem; margin-bottom: 5px;">${ex}</h4>`;
+
+        // Exercise Avg
+        const exTotalInt = grouped[ex].reduce((sum, w) => sum + (w.intensity || 0), 0);
+        const exAvgInt = (exTotalInt / grouped[ex].length).toFixed(1);
+        const intensityColor = getIntensityColor(parseFloat(exAvgInt));
+
+        group.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <h4 style="color: var(--accent-primary); font-size: 0.9rem;">${ex}</h4>
+                <span class="intensity-badge" style="background: ${intensityColor};">Avg: ${exAvgInt}</span>
+            </div>
+        `;
 
         grouped[ex].forEach(w => {
             const item = document.createElement('div');
             item.style.display = 'flex';
             item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center'; // Align items vertically
             item.style.padding = '5px 10px';
             item.style.background = 'rgba(255,255,255,0.05)';
             item.style.marginBottom = '2px';
             item.style.borderRadius = '4px';
             item.style.fontSize = '0.85rem';
+
+            // Consistent UI: Set info on left, details + delete on right
+            const wIntColor = getIntensityColor(w.intensity);
+
             item.innerHTML = `
-                <span>Set ${w.setNumber || '?'}</span>
-                <span>${w.reps} x ${w.weight} lbs</span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="font-weight: 600; min-width: 45px; color: var(--accent-primary);">Set ${w.setNumber || '?'}</span>
+                    <span>${w.reps} x ${w.weight} lbs</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="intensity-badge" style="background: ${wIntColor}; font-size: 0.7rem; padding: 1px 6px;">${(w.intensity || 0).toFixed(1)}</span>
+                    <button class="delete-btn" onclick="deleteWorkout(${w.id})" title="Delete Set" style="padding: 0;">
+                         <i class="fa-solid fa-trash" style="font-size: 0.8rem;"></i>
+                    </button>
+                </div>
             `;
             group.appendChild(item);
         });
@@ -436,9 +484,20 @@ function renderHistory() {
         dateHeader.style.display = 'flex';
         dateHeader.style.justifyContent = 'space-between';
         dateHeader.style.alignItems = 'center';
+
+        // Calculate Average Intensity for Date
+        const totalIntensity = groupedByDate[date].reduce((sum, w) => sum + (w.intensity || 0), 0);
+        const avgIntensity = (totalIntensity / groupedByDate[date].length).toFixed(1);
+        const avgColor = getIntensityColor(parseFloat(avgIntensity));
+
         dateHeader.innerHTML = `
-            <span>${date}</span>
-            <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date" style="margin-left: 10px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span>${date}</span>
+                <span class="intensity-badge" style="background: ${avgColor};">
+                    Avg: ${avgIntensity}
+                </span>
+            </div>
+            <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date">
                 <i class="fa-solid fa-trash"></i>
             </button>
         `;
@@ -460,8 +519,17 @@ function renderHistory() {
             exHeader.style.display = 'flex';
             exHeader.style.justifyContent = 'space-between';
             exHeader.style.alignItems = 'center';
+
+            // Calculate Average Intensity for Exercise
+            const exTotalInt = exercisesInDate[exercise].reduce((sum, w) => sum + (w.intensity || 0), 0);
+            const exAvgInt = (exTotalInt / exercisesInDate[exercise].length).toFixed(1);
+            const exIntColor = getIntensityColor(parseFloat(exAvgInt));
+
             exHeader.innerHTML = `
-                <h4>${exercise}</h4>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h4>${exercise}</h4>
+                    <span class="intensity-badge" style="background: ${exIntColor};">Avg: ${exAvgInt}</span>
+                </div>
                 <button class="delete-btn" onclick="deleteExerciseGroup('${date}', '${exercise.replace(/'/g, "\\'")}')" title="Delete All ${exercise}" style="font-size: 0.8rem;">
                     <i class="fa-solid fa-trash"></i>
                 </button>
@@ -471,7 +539,8 @@ function renderHistory() {
             const setList = document.createElement('div');
             setList.className = 'history-set-list';
 
-            exercisesInDate[exercise].forEach(workout => {
+            // Sort newest on top (descending ID)
+            exercisesInDate[exercise].sort((a, b) => b.id - a.id).forEach(workout => {
                 const setNum = workout.setNumber || 1;
                 const setItem = document.createElement('div');
                 setItem.className = 'history-set-item';
@@ -484,7 +553,9 @@ function renderHistory() {
                         <span><i class="fa-solid fa-weight-hanging"></i> ${workout.weight} lbs</span>
                     </div>
                     <div class="set-meta">
-                        <span class="intensity-dot" style="background: ${getIntensityColor(workout.intensity)}" title="Intensity: ${workout.intensity}"></span>
+                        <span class="intensity-badge" style="background: ${getIntensityColor(workout.intensity)}; border-radius: 4px;">
+                            ${(workout.intensity || 0).toFixed(1)}
+                        </span>
                         <button class="delete-btn" onclick="deleteWorkout(${workout.id})" title="Delete Set">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -730,11 +801,79 @@ function renderChart(exerciseName) {
     });
 }
 
+// Old chart logic replaced by renderCalendar below
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    const title = document.getElementById('calendar-title');
+    if (!grid || !title) return;
+
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    // Update Title
+    title.textContent = new Date(year, month).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    grid.innerHTML = '';
+
+    // First day of month
+    const firstDay = new Date(year, month, 1);
+    // Last day of month
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Days in previous month to pad (Start Sunday)
+    const paddingDays = firstDay.getDay();
+
+    // Group intensity by date string (local)
+    const intensityMap = {};
+    workouts.forEach(w => {
+        const d = new Date(w.date);
+        // We need local date string YYYY-MM-DD to match
+        // Note: w.date is ISO. 
+        // Let's rely on standard YYYY-M-D comparison
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        if (!intensityMap[key]) intensityMap[key] = { sum: 0, count: 0 };
+        intensityMap[key].sum += (w.intensity || 0);
+        intensityMap[key].count++;
+    });
+
+    // Padding
+    for (let i = 0; i < paddingDays; i++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day empty';
+        grid.appendChild(div);
+    }
+
+    // Days
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day';
+
+        const dateKey = `${year}-${month}-${i}`;
+        const data = intensityMap[dateKey];
+
+        div.innerHTML = `<span class="day-num">${i}</span>`;
+
+        if (data) {
+            const avg = (data.sum / data.count).toFixed(1);
+            const color = getIntensityColor(parseFloat(avg));
+            div.style.background = color + '40'; // 40 hex is ~25% opacity
+            div.style.borderColor = color;
+            div.style.color = '#fff';
+            div.classList.add('has-data');
+            div.innerHTML += `<div class="intensity-val">${avg}</div>`;
+            div.title = `Average Intensity: ${avg}`;
+        }
+
+        grid.appendChild(div);
+    }
+}
+
 // Helpers
 function getIntensityColor(level) {
-    if (level >= 8) return 'rgba(239, 68, 68, 0.4)'; // Red
-    if (level >= 5) return 'rgba(245, 158, 11, 0.4)'; // Orange
-    return 'rgba(16, 185, 129, 0.4)'; // Green
+    if (level >= 8) return '#ef4444'; // Red
+    if (level >= 5) return '#f59e0b'; // Orange
+    return '#10b981'; // Green
 }
 
 function formatNumber(num) {

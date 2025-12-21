@@ -101,7 +101,6 @@
                         </div>
                     </section>
 
-                    <!-- Analytics (Full Width in Dashboard Tab) -->
                     <section class="card analytics-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-chart-line"></i> Progress Analytics</h2>
@@ -114,6 +113,35 @@
                         </div>
                     </section>
                 </div>
+
+                <!-- Intensity Calendar (Full Width) -->
+                <section class="card analytics-section" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-calendar-days"></i> Intensity Calendar</h2>
+                        <div class="calendar-controls">
+                            <button id="prev-month" class="btn-text" style="font-size: 1.2rem;"><i
+                                    class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendar-title"
+                                style="font-weight: 600; min-width: 150px; text-align: center;">Month Year</span>
+                            <button id="next-month" class="btn-text" style="font-size: 1.2rem;"><i
+                                    class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="calendar-container">
+                        <div class="calendar-weekdays">
+                            <div>S</div>
+                            <div>M</div>
+                            <div>T</div>
+                            <div>W</div>
+                            <div>T</div>
+                            <div>F</div>
+                            <div>S</div>
+                        </div>
+                        <div id="calendar-grid" class="calendar-grid">
+                            <!-- JS Generated -->
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <!-- Log Workout Tab -->
@@ -225,7 +253,7 @@
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.07
+            v1.09
         </footer>
     </div>
 
