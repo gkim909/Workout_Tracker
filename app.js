@@ -18,6 +18,7 @@ const currentStreakEl = document.getElementById('current-streak');
 const lastWorkoutDateEl = document.getElementById('last-workout-date');
 const dateInput = document.getElementById('workout-date');
 const setIndicator = document.getElementById('current-set-indicator');
+const exerciseResetBtn = document.getElementById('exercise-reset');
 
 // Combobox Elements
 const exerciseInput = document.getElementById('exercise');
@@ -101,6 +102,28 @@ exportBtn.addEventListener('click', exportWorkouts);
 importBtn.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', importWorkouts);
 
+// Exercise Reset
+if (exerciseResetBtn) {
+    exerciseResetBtn.addEventListener('click', () => {
+        const repsInput = document.getElementById('reps');
+        const weightInput = document.getElementById('weight');
+        const intensityInput = document.getElementById('intensity');
+
+        exerciseInput.value = '';
+        repsInput.value = '';
+        weightInput.value = '';
+        intensityInput.value = 5;
+        if (intensityInput.nextElementSibling) {
+            intensityInput.nextElementSibling.value = 5;
+        }
+
+        hideDropdown();
+        renderExerciseHistory();
+        updateSetIndicator();
+        exerciseInput.focus();
+    });
+}
+
 // Tab Switching
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabPanes = document.querySelectorAll('.tab-pane');
@@ -183,8 +206,14 @@ document.getElementById('calendar-month-picker').addEventListener('change', (e) 
 // Delete Workout
 window.deleteWorkout = function (id) {
     if (confirm('Delete this set?')) {
+        const deletedWorkout = workouts.find(w => w.id === id) || null;
         workouts = workouts.filter(w => w.id !== id);
-        db.deleteWorkout(id).then(() => {
+        db.deleteWorkout(id).then(async () => {
+            if (deletedWorkout) {
+                const dateStr = getWorkoutDateKey(deletedWorkout);
+                await normalizeSetNumbers(deletedWorkout.exercise, dateStr);
+            }
+
             updateUI();
             updateSetIndicator();
 
@@ -310,14 +339,37 @@ function sortWorkouts() {
     });
 }
 
+function getWorkoutDateKey(workout) {
+    return new Date(workout.date).toISOString().split('T')[0];
+}
+
 function getNextSetNumber(exercise, dateStr) {
     // Find existing sets for this exercise on this date
     // Note: dateStr is YYYY-MM-DD from input
     const existingSets = workouts.filter(w => {
-        const wDate = new Date(w.date).toISOString().split('T')[0];
+        const wDate = getWorkoutDateKey(w);
         return w.exercise === exercise && wDate === dateStr;
     });
     return existingSets.length + 1;
+}
+
+async function normalizeSetNumbers(exercise, dateStr) {
+    const sets = workouts
+        .filter(w => w.exercise === exercise && getWorkoutDateKey(w) === dateStr)
+        .sort((a, b) => a.id - b.id);
+
+    let changed = false;
+    sets.forEach((w, index) => {
+        const nextSetNumber = index + 1;
+        if (w.setNumber !== nextSetNumber) {
+            w.setNumber = nextSetNumber;
+            changed = true;
+        }
+    });
+
+    if (changed) {
+        await db.bulkAdd(sets);
+    }
 }
 
 function updateSetIndicator() {
@@ -473,16 +525,23 @@ function renderExerciseHistory() {
     const last5 = history.slice(0, 5);
 
     let html = '<table style="width: 100%; text-align: left; border-collapse: collapse;">';
-    html += '<thead><tr><th style="padding-bottom: 5px; color: var(--accent-secondary);">Date</th><th style="color: var(--accent-secondary);">Set</th><th style="color: var(--accent-secondary);">Reps</th><th style="color: var(--accent-secondary);">Lbs</th></tr></thead><tbody>';
+    html += '<thead><tr><th style="padding-bottom: 5px; color: var(--accent-secondary);">Date</th><th style="color: var(--accent-secondary);">Set</th><th style="color: var(--accent-secondary);">Reps</th><th style="color: var(--accent-secondary);">Lbs</th><th style="color: var(--accent-secondary);">Int.</th></tr></thead><tbody>';
 
     last5.forEach(w => {
         const date = new Date(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        const intensityValue = Number(w.intensity || 0).toFixed(1);
+        const intensityColor = getIntensityColor(Number(w.intensity || 0));
         html += `
             <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
                 <td style="padding: 4px 0;">${date}</td>
                 <td>${w.setNumber || 1}</td>
                 <td>${w.reps}</td>
                 <td>${w.weight}</td>
+                <td>
+                    <span style="color: ${intensityColor}; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-fire" style="font-size: 0.7rem;"></i> ${intensityValue}
+                    </span>
+                </td>
             </tr>
         `;
     });

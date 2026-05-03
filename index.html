@@ -103,7 +103,7 @@
 
                     <section class="card analytics-section">
                         <div class="card-header">
-                            <h2><i class="fa-solid fa-chart-line"></i> Progress Analytics</h2>
+                            <h2><i class="fa-solid fa-chart-line"></i> Progress</h2>
                             <select id="chart-filter">
                                 <option value="" disabled selected>Select Exercise</option>
                             </select>
@@ -117,7 +117,7 @@
                 <!-- Intensity Calendar (Full Width) -->
                 <section class="card analytics-section" style="margin-top: 20px;">
                     <div class="card-header">
-                        <h2><i class="fa-solid fa-calendar-days"></i> Intensity Calendar</h2>
+                        <h2><i class="fa-solid fa-calendar-days"></i> Intensity</h2>
                         <div class="calendar-controls">
                             <button id="today-btn" class="btn-secondary"
                                 style="font-size: 0.8rem; padding: 2px 8px; margin-right: 5px;">Today</button>
@@ -159,7 +159,12 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="exercise">Exercise Name</label>
+                            <div class="form-label-row">
+                                <label for="exercise">Exercise Name</label>
+                                <button type="button" id="exercise-reset" class="btn-reset">
+                                    Reset
+                                </button>
+                            </div>
                             <div class="combobox-wrapper">
                                 <input type="text" id="exercise" placeholder="e.g. Bench Press" required
                                     autocomplete="off">
@@ -255,7 +260,7 @@
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.1
+            v1.21
         </footer>
     </div>
 

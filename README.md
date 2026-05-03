@@ -8,6 +8,7 @@ A progressive web app (PWA) for tracking workouts.
 - **Private:** No data is sent to the cloud, ensuring complete privacy.
 - **Installable:** Add to home screen on iOS and Android.
 - **Analytics:** Visualize your progress with charts.
+- **Mobile-First:** Optimized for iPhone and touch-only use (no keyboard shortcuts).
 
 ## How to Use
 1. Visit the hosted URL (e.g., on GitHub Pages).
@@ -15,6 +16,8 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.21**: Added intensity values to the quick exercise history in the Log Workout tab.
+- **v1.2**: Added Exercise Reset button and automatic set renumbering after deletions.
 - **v1.1**: Replaced "Avg Intensity" text with thematic Flame icons throughout the UI.
 - **v1.091**: Refined Intensity UI (colored text, full labels) and added Daily Average to Log tab.
 - **v1.09**: Replaced Intensity Graph with Calendar View, standardized UI with colored intensity badges.
