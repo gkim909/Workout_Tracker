@@ -16,6 +16,11 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.26**: Renamed Glassmorphism to Glacial Flux and updated the palette.
+- **v1.25**: Added a dropdown for superset exercise selection, updated superset labels, and refined Ballerina dropdown styling.
+- **v1.24**: Refined Neumorphism controls, increased Glassmorphism nav translucency, and added the Ballerina theme.
+- **v1.23**: Replaced the top tab navigation with a floating mobile bottom nav and moved UI style selection into Settings.
+- **v1.22**: Added optional two-exercise superset logging with linked history display.
 - **v1.21**: Added intensity values to the quick exercise history in the Log Workout tab.
 - **v1.2**: Added Exercise Reset button and automatic set renumbering after deletions.
 - **v1.1**: Replaced "Avg Intensity" text with thematic Flame icons throughout the UI.

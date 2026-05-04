@@ -8,6 +8,8 @@ const workoutForm = document.getElementById('workout-form');
 const historyList = document.getElementById('history-list');
 const clearHistoryBtn = document.getElementById('clear-history');
 const chartFilter = document.getElementById('chart-filter');
+const chartFilterToggle = document.getElementById('chart-filter-toggle');
+const chartFilterDropdown = document.getElementById('chart-filter-dropdown');
 const exportBtn = document.getElementById('export-history');
 const importBtn = document.getElementById('import-history-btn');
 const importFile = document.getElementById('import-file');
@@ -19,6 +21,13 @@ const lastWorkoutDateEl = document.getElementById('last-workout-date');
 const dateInput = document.getElementById('workout-date');
 const setIndicator = document.getElementById('current-set-indicator');
 const exerciseResetBtn = document.getElementById('exercise-reset');
+const themeSelect = document.getElementById('theme-select');
+const supersetEnabled = document.getElementById('superset-enabled');
+const supersetFields = document.getElementById('superset-fields');
+const supersetExerciseInput = document.getElementById('superset-exercise');
+const supersetSetIndicator = document.getElementById('superset-set-indicator');
+const supersetExerciseToggle = document.getElementById('superset-exercise-toggle');
+const supersetExerciseDropdown = document.getElementById('superset-exercise-dropdown');
 
 // Combobox Elements
 const exerciseInput = document.getElementById('exercise');
@@ -27,6 +36,8 @@ const exerciseDropdown = document.getElementById('exercise-dropdown');
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
+    initThemeSwitcher();
+
     // Set default date to today (Local Time)
     const today = new Date();
     // en-CA locale formats as YYYY-MM-DD which matches input type="date"
@@ -37,6 +48,39 @@ document.addEventListener('DOMContentLoaded', () => {
     loadWorkouts();
 });
 
+function initThemeSwitcher() {
+    if (!themeSelect) return;
+
+    const savedThemeRaw = localStorage.getItem('fittrack-ui-theme') || 'neumorphism';
+    const savedTheme = savedThemeRaw === 'glassmorphism' ? 'glacial-flux' : savedThemeRaw;
+    applyTheme(savedTheme);
+    themeSelect.value = savedTheme;
+
+    themeSelect.addEventListener('change', (e) => {
+        applyTheme(e.target.value);
+        localStorage.setItem('fittrack-ui-theme', e.target.value);
+
+        if (chartFilter.value) {
+            renderChart(chartFilter.value);
+        }
+    });
+}
+
+function applyTheme(theme) {
+    document.body.dataset.theme = theme;
+}
+
+function getThemeChartColors() {
+    const styles = getComputedStyle(document.body);
+    return {
+        primary: styles.getPropertyValue('--accent-primary').trim() || '#6366f1',
+        secondary: styles.getPropertyValue('--accent-secondary').trim() || '#8b5cf6',
+        text: styles.getPropertyValue('--text-secondary').trim() || '#94a3b8',
+        grid: styles.getPropertyValue('--chart-grid').trim() || 'rgba(148, 163, 184, 0.1)',
+        fill: styles.getPropertyValue('--chart-fill').trim() || 'rgba(99, 102, 241, 0.2)'
+    };
+}
+
 // Event Listeners
 workoutForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -44,19 +88,56 @@ workoutForm.addEventListener('submit', (e) => {
     const exerciseRaw = document.getElementById('exercise').value.trim();
     const exercise = toTitleCase(exerciseRaw);
     const dateStr = document.getElementById('workout-date').value;
+    const isSuperset = supersetEnabled && supersetEnabled.checked;
+    const createdAt = Date.now();
+    const pendingWorkouts = [];
 
     const newWorkout = {
-        id: Date.now(),
+        id: createdAt,
         exercise: exercise,
-        setNumber: getNextSetNumber(exercise, dateStr),
+        setNumber: getNextSetNumberWithPending(exercise, dateStr, pendingWorkouts),
         reps: parseInt(document.getElementById('reps').value),
         weight: parseFloat(document.getElementById('weight').value),
         intensity: parseInt(document.getElementById('intensity').value),
         date: new Date(dateStr + 'T12:00:00').toISOString()
     };
 
-    workouts.push(newWorkout);
-    db.addWorkout(newWorkout).then(() => {
+    pendingWorkouts.push(newWorkout);
+
+    if (isSuperset) {
+        const supersetExercise = toTitleCase(supersetExerciseInput.value.trim());
+        const supersetId = `ss-${createdAt}`;
+        const supersetRound = getNextSupersetRound(dateStr);
+        const supersetLabel = `${exercise} Superset ${supersetRound}`;
+
+        if (!supersetExercise) {
+            alert('Please enter the second superset exercise.');
+            return;
+        }
+
+        newWorkout.supersetId = supersetId;
+        newWorkout.supersetRound = supersetRound;
+        newWorkout.supersetOrder = 1;
+        newWorkout.supersetLabel = supersetLabel;
+
+        pendingWorkouts.push({
+            id: createdAt + 1,
+            exercise: supersetExercise,
+            setNumber: getNextSetNumberWithPending(supersetExercise, dateStr, pendingWorkouts),
+            reps: parseInt(document.getElementById('superset-reps').value),
+            weight: parseFloat(document.getElementById('superset-weight').value),
+            intensity: parseInt(document.getElementById('superset-intensity').value),
+            date: newWorkout.date,
+            supersetId: supersetId,
+            supersetRound: supersetRound,
+            supersetOrder: 2,
+            supersetLabel: supersetLabel
+        });
+    }
+
+    workouts.push(...pendingWorkouts);
+    const savePromise = pendingWorkouts.length > 1 ? db.bulkAdd(pendingWorkouts) : db.addWorkout(newWorkout);
+    savePromise.then(() => {
         console.log('Workout added to DB');
     }).catch(err => console.error(err));
 
@@ -72,6 +153,7 @@ workoutForm.addEventListener('submit', (e) => {
     updateChartOptions();
 
     updateSetIndicator(); // Update for next set
+    updateSupersetSetIndicator();
 });
 
 clearHistoryBtn.addEventListener('click', () => {
@@ -93,9 +175,48 @@ clearHistoryBtn.addEventListener('click', () => {
     }
 });
 
-chartFilter.addEventListener('change', (e) => {
-    renderChart(e.target.value);
-});
+if (chartFilter) {
+    chartFilter.addEventListener('input', (e) => {
+        filterExercises(e.target.value, chartFilter, chartFilterDropdown, () => {
+            if (chartFilter.value) {
+                renderChart(chartFilter.value);
+            }
+        });
+        showDropdown(chartFilterDropdown);
+        hideDropdown(exerciseDropdown);
+        hideDropdown(supersetExerciseDropdown);
+    });
+
+    chartFilter.addEventListener('focus', () => {
+        filterExercises(chartFilter.value, chartFilter, chartFilterDropdown, () => {
+            if (chartFilter.value) {
+                renderChart(chartFilter.value);
+            }
+        });
+        showDropdown(chartFilterDropdown);
+        hideDropdown(exerciseDropdown);
+        hideDropdown(supersetExerciseDropdown);
+    });
+}
+
+if (chartFilterToggle) {
+    chartFilterToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (chartFilterDropdown.classList.contains('show')) {
+            hideDropdown(chartFilterDropdown);
+        } else {
+            filterExercises('', chartFilter, chartFilterDropdown, () => {
+                if (chartFilter.value) {
+                    renderChart(chartFilter.value);
+                }
+            });
+            showDropdown(chartFilterDropdown);
+            hideDropdown(exerciseDropdown);
+            hideDropdown(supersetExerciseDropdown);
+            chartFilter.focus();
+        }
+    });
+}
 
 // Import/Export Handlers
 exportBtn.addEventListener('click', exportWorkouts);
@@ -108,6 +229,9 @@ if (exerciseResetBtn) {
         const repsInput = document.getElementById('reps');
         const weightInput = document.getElementById('weight');
         const intensityInput = document.getElementById('intensity');
+        const supersetRepsInput = document.getElementById('superset-reps');
+        const supersetWeightInput = document.getElementById('superset-weight');
+        const supersetIntensityInput = document.getElementById('superset-intensity');
 
         exerciseInput.value = '';
         repsInput.value = '';
@@ -116,11 +240,65 @@ if (exerciseResetBtn) {
         if (intensityInput.nextElementSibling) {
             intensityInput.nextElementSibling.value = 5;
         }
+        if (supersetEnabled) supersetEnabled.checked = false;
+        if (supersetExerciseInput) supersetExerciseInput.value = '';
+        if (supersetRepsInput) supersetRepsInput.value = '';
+        if (supersetWeightInput) supersetWeightInput.value = '';
+        if (supersetIntensityInput) {
+            supersetIntensityInput.value = 5;
+            if (supersetIntensityInput.nextElementSibling) {
+                supersetIntensityInput.nextElementSibling.value = 5;
+            }
+        }
+        toggleSupersetFields();
 
-        hideDropdown();
+        hideAllDropdowns();
         renderExerciseHistory();
         updateSetIndicator();
+        updateSupersetSetIndicator();
         exerciseInput.focus();
+    });
+}
+
+if (supersetEnabled) {
+    supersetEnabled.addEventListener('change', () => {
+        toggleSupersetFields();
+        updateSupersetSetIndicator();
+    });
+}
+
+if (supersetExerciseInput) {
+    supersetExerciseInput.addEventListener('input', (e) => {
+        updateSupersetSetIndicator();
+        filterExercises(e.target.value, supersetExerciseInput, supersetExerciseDropdown, () => {
+            updateSupersetSetIndicator();
+        });
+        showDropdown(supersetExerciseDropdown);
+        hideDropdown(exerciseDropdown);
+    });
+
+    supersetExerciseInput.addEventListener('focus', () => {
+        filterExercises(supersetExerciseInput.value, supersetExerciseInput, supersetExerciseDropdown, () => {
+            updateSupersetSetIndicator();
+        });
+        showDropdown(supersetExerciseDropdown);
+        hideDropdown(exerciseDropdown);
+    });
+}
+
+if (supersetExerciseToggle) {
+    supersetExerciseToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (supersetExerciseDropdown.classList.contains('show')) {
+            hideDropdown(supersetExerciseDropdown);
+        } else {
+            filterExercises('', supersetExerciseInput, supersetExerciseDropdown, () => {
+                updateSupersetSetIndicator();
+            });
+            showDropdown(supersetExerciseDropdown);
+            hideDropdown(exerciseDropdown);
+            supersetExerciseInput.focus();
+        }
     });
 }
 
@@ -147,22 +325,34 @@ tabBtns.forEach(btn => {
 exerciseInput.addEventListener('input', (e) => {
     updateSetIndicator();
     renderExerciseHistory();
-    filterExercises(e.target.value);
-    showDropdown();
+    filterExercises(e.target.value, exerciseInput, exerciseDropdown, () => {
+        updateSetIndicator();
+        renderExerciseHistory();
+    });
+    showDropdown(exerciseDropdown);
+    hideDropdown(supersetExerciseDropdown);
 });
 
 exerciseInput.addEventListener('focus', () => {
-    filterExercises(exerciseInput.value);
-    showDropdown();
+    filterExercises(exerciseInput.value, exerciseInput, exerciseDropdown, () => {
+        updateSetIndicator();
+        renderExerciseHistory();
+    });
+    showDropdown(exerciseDropdown);
+    hideDropdown(supersetExerciseDropdown);
 });
 
 exerciseToggle.addEventListener('click', (e) => {
     e.preventDefault(); // Prevent form submission if inside form
     if (exerciseDropdown.classList.contains('show')) {
-        hideDropdown();
+        hideDropdown(exerciseDropdown);
     } else {
-        filterExercises(''); // Show all
-        showDropdown();
+        filterExercises('', exerciseInput, exerciseDropdown, () => {
+            updateSetIndicator();
+            renderExerciseHistory();
+        }); // Show all
+        showDropdown(exerciseDropdown);
+        hideDropdown(supersetExerciseDropdown);
         exerciseInput.focus();
     }
 });
@@ -170,12 +360,13 @@ exerciseToggle.addEventListener('click', (e) => {
 // Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.combobox-wrapper')) {
-        hideDropdown();
+        hideAllDropdowns();
     }
 });
 
 document.getElementById('workout-date').addEventListener('change', () => {
     updateSetIndicator();
+    updateSupersetSetIndicator();
     renderTodaysHistory();
 });
 
@@ -318,11 +509,12 @@ async function loadWorkouts() {
         renderCalendar();
 
         // Default chart view if data exists
-        if (workouts.length > 0 && !chartFilter.value) {
-            const lastExercise = workouts[0].exercise;
-            chartFilter.value = lastExercise;
-            renderChart(lastExercise);
-        }
+    if (workouts.length > 0 && !chartFilter.value) {
+        const lastExercise = workouts[0].exercise;
+        chartFilter.value = lastExercise;
+        chartFilter.placeholder = lastExercise;
+        renderChart(lastExercise);
+    }
     } catch (err) {
         console.error('Error loading workouts:', err);
     }
@@ -351,6 +543,18 @@ function getNextSetNumber(exercise, dateStr) {
         return w.exercise === exercise && wDate === dateStr;
     });
     return existingSets.length + 1;
+}
+
+function getNextSetNumberWithPending(exercise, dateStr, pendingWorkouts) {
+    const pendingCount = pendingWorkouts.filter(w => w.exercise === exercise && getWorkoutDateKey(w) === dateStr).length;
+    return getNextSetNumber(exercise, dateStr) + pendingCount;
+}
+
+function getNextSupersetRound(dateStr) {
+    const supersetIds = new Set(workouts
+        .filter(w => w.supersetId && getWorkoutDateKey(w) === dateStr)
+        .map(w => w.supersetId));
+    return supersetIds.size + 1;
 }
 
 async function normalizeSetNumbers(exercise, dateStr) {
@@ -385,11 +589,54 @@ function updateSetIndicator() {
     }
 }
 
+function updateSupersetSetIndicator() {
+    if (!supersetSetIndicator) return;
+
+    const exercise = toTitleCase((supersetExerciseInput && supersetExerciseInput.value.trim()) || '');
+    const dateStr = document.getElementById('workout-date').value;
+
+    if (exercise && dateStr) {
+        supersetSetIndicator.textContent = `Set ${getNextSetNumber(exercise, dateStr)}`;
+    } else {
+        supersetSetIndicator.textContent = 'Set 1';
+    }
+}
+
+function toggleSupersetFields() {
+    if (!supersetFields || !supersetEnabled) return;
+
+    const enabled = supersetEnabled.checked;
+    supersetFields.hidden = !enabled;
+
+    ['superset-exercise', 'superset-reps', 'superset-weight'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.required = enabled;
+    });
+}
+
 function updateUI() {
     renderHistory();
     updateSummary();
     renderTodaysHistory();
     renderExerciseHistory();
+}
+
+function getSupersetGroups(workoutList) {
+    const groups = {};
+    workoutList.forEach(w => {
+        if (!w.supersetId) return;
+        if (!groups[w.supersetId]) groups[w.supersetId] = [];
+        groups[w.supersetId].push(w);
+    });
+
+    return Object.values(groups)
+        .map(group => group.sort((a, b) => (a.supersetOrder || 0) - (b.supersetOrder || 0)))
+        .sort((a, b) => Math.max(...b.map(w => w.id)) - Math.max(...a.map(w => w.id)));
+}
+
+function getSupersetGroupTitle(group) {
+    const round = group[0].supersetRound || '?';
+    return group[0].supersetLabel || `Superset ${round}`;
 }
 
 function renderTodaysHistory() {
@@ -415,9 +662,49 @@ function renderTodaysHistory() {
         return;
     }
 
-    // Group by Exercise
+    const supersetGroups = getSupersetGroups(todaysWorkouts);
+    const normalWorkouts = todaysWorkouts.filter(w => !w.supersetId);
+
+    supersetGroups.forEach(groupWorkouts => {
+        const supersetGroup = document.createElement('div');
+        supersetGroup.className = 'superset-history-group';
+
+        supersetGroup.innerHTML = `
+            <div class="superset-history-header">
+                <span><i class="fa-solid fa-link"></i> ${getSupersetGroupTitle(groupWorkouts)}</span>
+                <small>Round ${groupWorkouts[0].supersetRound || '?'}</small>
+            </div>
+        `;
+
+        groupWorkouts.forEach(w => {
+            const item = document.createElement('div');
+            item.className = 'superset-history-item';
+            const wIntColor = getIntensityColor(w.intensity);
+
+            item.innerHTML = `
+                <div class="superset-set-main">
+                    <span class="superset-exercise-name">${w.exercise}</span>
+                    <span style="font-weight: 600; color: var(--accent-primary);">Set ${w.setNumber || '?'}</span>
+                    <span>${w.reps} x ${w.weight} lbs</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="font-size: 0.8rem; font-weight: 600; color: ${wIntColor}; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-fire"></i> ${(w.intensity || 0).toFixed(1)}
+                    </span>
+                    <button class="delete-btn" onclick="deleteWorkout(${w.id})" title="Delete Set" style="padding: 0;">
+                         <i class="fa-solid fa-trash" style="font-size: 0.8rem;"></i>
+                    </button>
+                </div>
+            `;
+            supersetGroup.appendChild(item);
+        });
+
+        list.appendChild(supersetGroup);
+    });
+
+    // Group regular sets by Exercise
     const grouped = {};
-    todaysWorkouts.forEach(w => {
+    normalWorkouts.forEach(w => {
         if (!grouped[w.exercise]) grouped[w.exercise] = [];
         grouped[w.exercise].push(w);
     });
@@ -599,9 +886,53 @@ function renderHistory() {
         `;
         dateGroup.appendChild(dateHeader);
 
-        // Group by Exercise within Date
+        const supersetGroups = getSupersetGroups(groupedByDate[date]);
+        supersetGroups.forEach(groupWorkouts => {
+            const supersetGroup = document.createElement('div');
+            supersetGroup.className = 'history-exercise-group superset-history-group';
+
+            const supersetHeader = document.createElement('div');
+            supersetHeader.className = 'history-exercise-header superset-history-header';
+            supersetHeader.innerHTML = `
+                <h4><i class="fa-solid fa-link"></i> ${getSupersetGroupTitle(groupWorkouts)}</h4>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Round ${groupWorkouts[0].supersetRound || '?'}</span>
+            `;
+            supersetGroup.appendChild(supersetHeader);
+
+            const setList = document.createElement('div');
+            setList.className = 'history-set-list';
+
+            groupWorkouts.forEach(workout => {
+                const setItem = document.createElement('div');
+                setItem.className = 'history-set-item superset-history-item';
+                setItem.innerHTML = `
+                    <div class="set-details">
+                        <span style="min-width: 110px; font-weight: 600; color: var(--text-primary);">
+                            ${workout.exercise}
+                        </span>
+                        <span style="font-weight: 600; color: var(--accent-primary);">Set ${workout.setNumber || 1}</span>
+                        <span><i class="fa-solid fa-rotate-right"></i> ${workout.reps} Reps</span>
+                        <span><i class="fa-solid fa-weight-hanging"></i> ${workout.weight} lbs</span>
+                    </div>
+                    <div class="set-meta">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: ${getIntensityColor(workout.intensity)}; margin-right: 5px; display: flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-fire"></i> ${(workout.intensity || 0).toFixed(1)}
+                        </span>
+                        <button class="delete-btn" onclick="deleteWorkout(${workout.id})" title="Delete Set">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                setList.appendChild(setItem);
+            });
+
+            supersetGroup.appendChild(setList);
+            dateGroup.appendChild(supersetGroup);
+        });
+
+        // Group regular sets by Exercise within Date
         const exercisesInDate = {};
-        groupedByDate[date].forEach(workout => {
+        groupedByDate[date].filter(workout => !workout.supersetId).forEach(workout => {
             if (!exercisesInDate[workout.exercise]) exercisesInDate[workout.exercise] = [];
             exercisesInDate[workout.exercise].push(workout);
         });
@@ -766,17 +1097,12 @@ function updateChartOptions() {
     const exercises = [...new Set(workouts.map(w => w.exercise))];
     const currentValue = chartFilter.value;
 
-    chartFilter.innerHTML = '<option value="" disabled selected>Select Exercise</option>';
-
-    exercises.sort().forEach(ex => {
-        const option = document.createElement('option');
-        option.value = ex;
-        option.textContent = ex;
-        chartFilter.appendChild(option);
-    });
-
     if (currentValue && exercises.includes(currentValue)) {
         chartFilter.value = currentValue;
+        chartFilter.placeholder = currentValue;
+    } else {
+        chartFilter.value = '';
+        chartFilter.placeholder = exercises.length ? 'Select Exercise' : 'No exercises yet';
     }
 }
 
@@ -831,9 +1157,11 @@ function renderChart(exerciseName) {
         chartInstance.destroy();
     }
 
+    const themeColors = getThemeChartColors();
+
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.5)');
+    gradient.addColorStop(0, themeColors.fill);
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
 
     chartInstance = new Chart(ctx, {
@@ -844,13 +1172,13 @@ function renderChart(exerciseName) {
                 {
                     label: 'Daily Max (lbs)',
                     data: maxDataPoints,
-                    borderColor: '#6366f1',
+                    borderColor: themeColors.primary,
                     backgroundColor: gradient,
                     borderWidth: 2,
-                    pointBackgroundColor: '#6366f1',
+                    pointBackgroundColor: themeColors.primary,
                     pointBorderColor: '#fff',
                     pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#6366f1',
+                    pointHoverBorderColor: themeColors.primary,
                     fill: true,
                     tension: 0.3,
                     pointRadius: 5,
@@ -861,8 +1189,8 @@ function renderChart(exerciseName) {
                     label: 'All Sets',
                     data: allSetsPoints,
                     type: 'scatter',
-                    backgroundColor: 'rgba(139, 92, 246, 0.5)', // Lighter/Different shade
-                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    backgroundColor: themeColors.secondary,
+                    borderColor: themeColors.secondary,
                     pointRadius: 4,
                     pointHoverRadius: 6,
                     order: 2
@@ -874,7 +1202,7 @@ function renderChart(exerciseName) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    labels: { color: '#94a3b8' }
+                    labels: { color: themeColors.text }
                 },
                 tooltip: {
                     callbacks: {
@@ -887,12 +1215,12 @@ function renderChart(exerciseName) {
             },
             scales: {
                 y: {
-                    grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                    ticks: { color: '#94a3b8' }
+                    grid: { color: themeColors.grid },
+                    ticks: { color: themeColors.text }
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { color: '#94a3b8' }
+                    ticks: { color: themeColors.text }
                 }
             }
         }
@@ -1046,44 +1374,63 @@ function importWorkouts(event) {
 }
 
 // Combobox Functions
-function showDropdown() {
-    exerciseDropdown.classList.add('show');
+function showDropdown(dropdown) {
+    if (dropdown) dropdown.classList.add('show');
 }
 
-function hideDropdown() {
-    exerciseDropdown.classList.remove('show');
+function hideDropdown(dropdown) {
+    if (dropdown) dropdown.classList.remove('show');
 }
 
-function filterExercises(query) {
+function hideAllDropdowns() {
+    hideDropdown(exerciseDropdown);
+    hideDropdown(supersetExerciseDropdown);
+    hideDropdown(chartFilterDropdown);
+}
+
+function filterExercises(query, input, dropdown, onSelect) {
+    if (!input || !dropdown) return;
+
     const exercises = [...new Set(workouts.map(w => w.exercise))].sort();
+    if (input === chartFilter && chartFilter.value === '') {
+        input.placeholder = 'Select Exercise';
+    }
+
     const filtered = exercises.filter(ex => ex.toLowerCase().includes(query.toLowerCase()));
 
-    exerciseDropdown.innerHTML = '';
+    dropdown.innerHTML = '';
 
     if (filtered.length === 0) {
         if (query) {
             const item = document.createElement('li');
             item.className = 'combobox-item no-results';
             item.textContent = 'No matching exercises';
-            exerciseDropdown.appendChild(item);
+            dropdown.appendChild(item);
+        } else if (input === chartFilter) {
+            const item = document.createElement('li');
+            item.className = 'combobox-item no-results';
+            item.textContent = 'No exercises yet';
+            dropdown.appendChild(item);
         } else {
             // Show all if empty query
-            exercises.forEach(ex => createDropdownItem(ex));
+            exercises.forEach(ex => createDropdownItem(ex, input, dropdown, onSelect));
         }
     } else {
-        filtered.forEach(ex => createDropdownItem(ex));
+        filtered.forEach(ex => createDropdownItem(ex, input, dropdown, onSelect));
     }
 }
 
-function createDropdownItem(text) {
+function createDropdownItem(text, input, dropdown, onSelect) {
     const item = document.createElement('li');
     item.className = 'combobox-item';
     item.textContent = text;
     item.addEventListener('click', () => {
-        exerciseInput.value = text;
-        hideDropdown();
-        updateSetIndicator();
-        renderExerciseHistory();
+        input.value = text;
+        hideDropdown(dropdown);
+        if (onSelect) onSelect();
+        if (input === chartFilter) {
+            chartFilter.placeholder = text;
+        }
     });
-    exerciseDropdown.appendChild(item);
+    dropdown.appendChild(item);
 }

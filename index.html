@@ -14,7 +14,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -41,7 +41,7 @@
         </header>
 
         <!-- Tab Navigation -->
-        <div class="tab-nav">
+        <nav class="tab-nav" aria-label="Primary navigation">
             <button class="tab-btn active" data-tab="dashboard">
                 <i class="fa-solid fa-chart-pie"></i> Dashboard
             </button>
@@ -51,7 +51,7 @@
             <button class="tab-btn" data-tab="settings">
                 <i class="fa-solid fa-cog"></i> Settings
             </button>
-        </div>
+        </nav>
 
         <main>
             <!-- Dashboard Tab -->
@@ -104,9 +104,13 @@
                     <section class="card analytics-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-chart-line"></i> Progress</h2>
-                            <select id="chart-filter">
-                                <option value="" disabled selected>Select Exercise</option>
-                            </select>
+                            <div class="combobox-wrapper chart-filter-combobox">
+                                <input type="text" id="chart-filter" placeholder="Select Exercise" autocomplete="off">
+                                <button type="button" id="chart-filter-toggle" class="combobox-toggle" tabindex="-1">
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <ul id="chart-filter-dropdown" class="combobox-dropdown"></ul>
+                            </div>
                         </div>
                         <div class="chart-container">
                             <canvas id="progressChart"></canvas>
@@ -216,6 +220,70 @@
                             </div>
                         </div>
 
+                        <div class="form-group superset-toggle-row">
+                            <label class="checkbox-label" for="superset-enabled">
+                                <input type="checkbox" id="superset-enabled">
+                                <span class="checkbox-copy">
+                                    <strong>Superset</strong>
+                                    <small>Add a second exercise to this set</small>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div id="superset-fields" class="superset-fields" hidden>
+                            <div class="superset-heading">
+                                <span><i class="fa-solid fa-link"></i> Superset Exercise 2</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="superset-exercise">Exercise Name</label>
+                                <div class="combobox-wrapper">
+                                    <input type="text" id="superset-exercise" placeholder="e.g. Bent Over Row"
+                                        autocomplete="off">
+                                    <button type="button" id="superset-exercise-toggle" class="combobox-toggle" tabindex="-1">
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    </button>
+                                    <ul id="superset-exercise-dropdown" class="combobox-dropdown"></ul>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="superset-reps">Reps</label>
+                                    <div class="stepper-control">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', -1)"><i
+                                                class="fa-solid fa-minus"></i></button>
+                                        <input type="number" id="superset-reps" placeholder="0" min="1">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', 1)"><i
+                                                class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Current Set</label>
+                                    <div id="superset-set-indicator" class="set-indicator">Set 1</div>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="superset-weight">Weight (lbs)</label>
+                                    <div class="stepper-control">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', -5)"><i
+                                                class="fa-solid fa-minus"></i></button>
+                                        <input type="number" id="superset-weight" placeholder="0" min="0" step="0.5">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', 5)"><i
+                                                class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="superset-intensity">Intensity (1-10)</label>
+                                    <input type="range" id="superset-intensity" min="1" max="10" value="5"
+                                        oninput="this.nextElementSibling.value = this.value">
+                                    <output>5</output>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn-primary">
                             <i class="fa-solid fa-save"></i> Save Workout
                         </button>
@@ -241,6 +309,19 @@
                     </div>
 
                     <div class="settings-group">
+                        <h3>Appearance</h3>
+                        <div class="settings-actions">
+                            <label for="theme-select">UI Style</label>
+                            <select id="theme-select">
+                                <option value="neumorphism">Neumorphism</option>
+                                <option value="glacial-flux">Glacial Flux</option>
+                                <option value="ballerina">Ballerina</option>
+                                <option value="pixel">Pixel Art</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
                         <h3>Data Management</h3>
                         <div class="settings-actions">
                             <button id="export-history" class="btn-secondary" style="width: 100%; margin-bottom: 15px;">
@@ -260,7 +341,7 @@
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.21
+            v1.26
         </footer>
     </div>
 
