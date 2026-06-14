@@ -420,59 +420,6 @@ select:focus {
     font-size: 0.9rem;
 }
 
-.superset-history-group {
-    border: 1px solid rgba(59, 130, 246, 0.28);
-    border-radius: var(--radius-md);
-    background: rgba(59, 130, 246, 0.08);
-    margin-bottom: 12px;
-    overflow: hidden;
-}
-
-.superset-history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 8px 10px;
-    color: var(--accent-primary);
-    font-weight: 700;
-    font-size: 0.86rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.superset-history-header small {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.superset-history-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 7px 10px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-    font-size: 0.84rem;
-}
-
-.superset-history-item:last-child {
-    border-bottom: none;
-}
-
-.superset-set-main {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.superset-exercise-name {
-    min-width: 115px;
-    color: var(--text-primary);
-    font-weight: 700;
-}
-
 /* Stepper Controls */
 .stepper-control {
     display: flex;
@@ -985,143 +932,6 @@ output {
     cursor: pointer;
 }
 
-/* Theme 1: Neumorphism - soft fitness console */
-body[data-theme="neumorphism"] {
-    --bg-dark: #e8edf3;
-    --bg-card: #e8edf3;
-    --bg-card-hover: #f2f6fb;
-    --text-primary: #152033;
-    --text-secondary: #647084;
-    --accent-primary: #2f80ed;
-    --accent-secondary: #0f9f8f;
-    --accent-glow: rgba(47, 128, 237, 0.2);
-    --border-color: rgba(255, 255, 255, 0.72);
-    --success: #0f9f8f;
-    --danger: #d64545;
-    --radius-lg: 28px;
-    --radius-md: 16px;
-    --shadow-card: 12px 12px 24px rgba(158, 169, 184, 0.55), -12px -12px 24px rgba(255, 255, 255, 0.92);
-    --chart-grid: rgba(100, 112, 132, 0.16);
-    --chart-fill: rgba(47, 128, 237, 0.24);
-    background:
-        radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.9) 0 11%, transparent 28%),
-        linear-gradient(135deg, #edf2f8 0%, #dfe7f0 100%);
-}
-
-body[data-theme="neumorphism"] .background-glow {
-    background:
-        radial-gradient(circle at 18% 18%, rgba(47, 128, 237, 0.12), transparent 28%),
-        radial-gradient(circle at 82% 26%, rgba(15, 159, 143, 0.14), transparent 30%);
-}
-
-body[data-theme="neumorphism"] header,
-body[data-theme="neumorphism"] .tab-nav,
-body[data-theme="neumorphism"] .card,
-body[data-theme="neumorphism"] input,
-body[data-theme="neumorphism"] select,
-body[data-theme="neumorphism"] .history-exercise-group,
-body[data-theme="neumorphism"] .calendar-day,
-body[data-theme="neumorphism"] .set-indicator,
-body[data-theme="neumorphism"] .checkbox-label,
-body[data-theme="neumorphism"] .superset-fields {
-    background: var(--bg-card);
-    border-color: rgba(255, 255, 255, 0.8);
-    box-shadow: var(--shadow-card);
-}
-
-body[data-theme="neumorphism"] header,
-body[data-theme="neumorphism"] .tab-nav {
-    border-radius: 28px;
-}
-
-body[data-theme="neumorphism"] header {
-    padding: 18px 22px;
-}
-
-body[data-theme="neumorphism"] .tab-nav {
-    padding: 8px;
-}
-
-body[data-theme="neumorphism"] .card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
-
-body[data-theme="neumorphism"] .card:hover,
-body[data-theme="neumorphism"] .btn-secondary:hover,
-body[data-theme="neumorphism"] .btn-primary:hover {
-    box-shadow: 16px 16px 30px rgba(158, 169, 184, 0.58), -16px -16px 30px rgba(255, 255, 255, 0.95);
-}
-
-body[data-theme="neumorphism"] input:focus,
-body[data-theme="neumorphism"] select:focus,
-body[data-theme="neumorphism"] .btn-primary,
-body[data-theme="neumorphism"] .stepper-btn,
-body[data-theme="neumorphism"] .avatar,
-body[data-theme="neumorphism"] .icon-box {
-    box-shadow: inset 5px 5px 10px rgba(158, 169, 184, 0.45), inset -5px -5px 10px rgba(255, 255, 255, 0.95);
-}
-
-body[data-theme="neumorphism"] .tab-btn.active {
-    background: #dfe7f0;
-    box-shadow: inset 5px 5px 10px rgba(158, 169, 184, 0.45), inset -5px -5px 10px rgba(255, 255, 255, 0.95);
-}
-
-body[data-theme="neumorphism"] .btn-primary {
-    color: #ffffff;
-    box-shadow: 8px 8px 18px rgba(47, 128, 237, 0.24), -8px -8px 18px rgba(255, 255, 255, 0.85);
-}
-
-body[data-theme="neumorphism"] .btn-secondary,
-body[data-theme="neumorphism"] .btn-reset,
-body[data-theme="neumorphism"] .stepper-btn {
-    background: linear-gradient(145deg, #f3f7fb, #dce5ee);
-    border-color: rgba(255, 255, 255, 0.84);
-    color: var(--accent-primary);
-    box-shadow: 7px 7px 15px rgba(158, 169, 184, 0.42), -7px -7px 15px rgba(255, 255, 255, 0.9);
-}
-
-body[data-theme="neumorphism"] .btn-secondary:hover,
-body[data-theme="neumorphism"] .btn-reset:hover,
-body[data-theme="neumorphism"] .stepper-btn:hover {
-    background: linear-gradient(145deg, #eaf2fa, #d5e1ec);
-    color: var(--accent-secondary);
-    border-color: rgba(47, 128, 237, 0.38);
-}
-
-body[data-theme="neumorphism"] .btn-danger-large {
-    background: linear-gradient(145deg, #fff2f2, #eadbdd);
-    border-color: rgba(214, 69, 69, 0.25);
-    color: var(--danger);
-    box-shadow: 7px 7px 15px rgba(158, 169, 184, 0.38), -7px -7px 15px rgba(255, 255, 255, 0.9);
-}
-
-body[data-theme="neumorphism"] input[type="range"] {
-    background: #c8d3df;
-    border: 1px solid rgba(100, 112, 132, 0.2);
-    box-shadow: inset 4px 4px 8px rgba(158, 169, 184, 0.55), inset -4px -4px 8px rgba(255, 255, 255, 0.84);
-}
-
-body[data-theme="neumorphism"] input[type="range"]::-webkit-slider-thumb {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    border: 3px solid #f7fbff;
-    box-shadow: 0 4px 12px rgba(47, 128, 237, 0.35);
-}
-
-body[data-theme="neumorphism"] .history-exercise-header,
-body[data-theme="neumorphism"] .history-set-item:hover,
-body[data-theme="neumorphism"] .combobox-item:hover,
-body[data-theme="neumorphism"] .combobox-item.active {
-    background: rgba(255, 255, 255, 0.42);
-}
-
-body[data-theme="neumorphism"] #calendar-month-picker {
-    background: #e8edf3 !important;
-    border-color: rgba(255, 255, 255, 0.8) !important;
-    color: var(--text-primary) !important;
-    color-scheme: light !important;
-}
-
 /* Theme 2: Glacial Flux - luminous arctic glass */
 body[data-theme="glacial-flux"] {
     --bg-dark: #050A18;
@@ -1401,159 +1211,6 @@ body[data-theme="ballerina"] #calendar-month-picker {
     color-scheme: light !important;
 }
 
-/* Theme 4: Pixel Art - arcade workout tracker */
-body[data-theme="pixel"] {
-    --bg-dark: #101018;
-    --bg-card: #191a2e;
-    --bg-card-hover: #252746;
-    --text-primary: #fff7d6;
-    --text-secondary: #a9acd6;
-    --accent-primary: #00e5ff;
-    --accent-secondary: #ff3df2;
-    --accent-glow: rgba(0, 229, 255, 0.35);
-    --border-color: #565a9a;
-    --success: #55ff7f;
-    --danger: #ff4d6d;
-    --font-main: 'Press Start 2P', 'Inter', sans-serif;
-    --radius-lg: 0;
-    --radius-md: 0;
-    --shadow-card: 0 0 0 3px #0b0c18, 8px 8px 0 #000000;
-    --chart-grid: rgba(255, 247, 214, 0.12);
-    --chart-fill: rgba(0, 229, 255, 0.2);
-    image-rendering: pixelated;
-    background:
-        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        radial-gradient(circle at 18% 20%, rgba(255, 61, 242, 0.22), transparent 24%),
-        radial-gradient(circle at 82% 72%, rgba(0, 229, 255, 0.18), transparent 26%),
-        #101018;
-    background-size: 18px 18px, 18px 18px, auto, auto, auto;
-}
-
-body[data-theme="pixel"] .background-glow {
-    background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 4px);
-}
-
-body[data-theme="pixel"] .app-container {
-    max-width: 1160px;
-}
-
-body[data-theme="pixel"] header,
-body[data-theme="pixel"] .tab-nav,
-body[data-theme="pixel"] .card,
-body[data-theme="pixel"] input,
-body[data-theme="pixel"] select,
-body[data-theme="pixel"] .history-exercise-group,
-body[data-theme="pixel"] .calendar-day,
-body[data-theme="pixel"] .combobox-dropdown,
-body[data-theme="pixel"] .btn-secondary,
-body[data-theme="pixel"] .btn-danger-large,
-body[data-theme="pixel"] .stepper-btn,
-body[data-theme="pixel"] .set-indicator,
-body[data-theme="pixel"] .btn-reset,
-body[data-theme="pixel"] .checkbox-label,
-body[data-theme="pixel"] .superset-fields,
-body[data-theme="pixel"] .superset-history-group {
-    border: 3px solid var(--border-color);
-    border-radius: 0;
-    box-shadow: var(--shadow-card);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-}
-
-body[data-theme="pixel"] header,
-body[data-theme="pixel"] .tab-nav {
-    background: #191a2e;
-}
-
-body[data-theme="pixel"] header {
-    padding: 18px;
-}
-
-body[data-theme="pixel"] .tab-nav {
-    padding: 8px;
-}
-
-body[data-theme="pixel"] h1,
-body[data-theme="pixel"] h2,
-body[data-theme="pixel"] h3,
-body[data-theme="pixel"] h4,
-body[data-theme="pixel"] label,
-body[data-theme="pixel"] button,
-body[data-theme="pixel"] input,
-body[data-theme="pixel"] select,
-body[data-theme="pixel"] .summary-info p,
-body[data-theme="pixel"] .summary-info h3,
-body[data-theme="pixel"] .history-date-header,
-body[data-theme="pixel"] .history-set-item,
-body[data-theme="pixel"] footer {
-    font-size: 0.72rem;
-    line-height: 1.8;
-}
-
-body[data-theme="pixel"] .logo h1 {
-    color: var(--accent-primary);
-    text-shadow: 3px 3px 0 #000000, 5px 5px 0 var(--accent-secondary);
-}
-
-body[data-theme="pixel"] .btn-primary,
-body[data-theme="pixel"] .avatar {
-    background: var(--accent-primary);
-    color: #101018;
-    border: 3px solid #fff7d6;
-    border-radius: 0;
-    box-shadow: 6px 6px 0 #000000;
-}
-
-body[data-theme="pixel"] .btn-primary:hover,
-body[data-theme="pixel"] .btn-secondary:hover,
-body[data-theme="pixel"] .btn-danger-large:hover,
-body[data-theme="pixel"] .stepper-btn:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 3px 3px 0 #000000;
-}
-
-body[data-theme="pixel"] .tab-btn {
-    border: 3px solid transparent;
-    color: var(--text-secondary);
-}
-
-body[data-theme="pixel"] .tab-btn.active {
-    background: var(--accent-secondary);
-    border-color: #fff7d6;
-    color: #101018;
-    box-shadow: 5px 5px 0 #000000;
-}
-
-body[data-theme="pixel"] .icon-box,
-body[data-theme="pixel"] .history-exercise-header,
-body[data-theme="pixel"] .combobox-item:hover,
-body[data-theme="pixel"] .combobox-item.active {
-    background: #252746;
-    border: 2px solid var(--accent-primary);
-    border-radius: 0;
-}
-
-body[data-theme="pixel"] input[type="range"]::-webkit-slider-thumb {
-    border-radius: 0;
-    border: 3px solid #fff7d6;
-}
-
-body[data-theme="pixel"] .intensity-dot {
-    border-radius: 0;
-}
-
-body[data-theme="pixel"] .calendar-day.has-data:hover {
-    transform: translate(-2px, -2px);
-}
-
-body[data-theme="pixel"] #calendar-month-picker {
-    background: #191a2e !important;
-    border-color: #565a9a !important;
-    color: var(--text-primary) !important;
-    color-scheme: dark !important;
-}
-
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -1563,4 +1220,315 @@ body[data-theme="pixel"] #calendar-month-picker {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* ============================= */
+/* Notes: Set & Session          */
+/* ============================= */
+
+.note-group {
+    margin-bottom: 20px;
+}
+
+.note-toggle.has-note {
+    color: var(--text-primary);
+    border-color: var(--accent-primary);
+    background: var(--accent-glow);
+}
+
+.note-wrapper {
+    margin-top: 8px;
+}
+
+.note-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: 0.92rem;
+    line-height: 1.45;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+.note-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Inline note lines shown inside history lists */
+.set-note,
+.session-note-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.set-note {
+    margin: 2px 0 8px;
+    padding-left: 28px;
+}
+
+.set-note i,
+.session-note-line i {
+    margin-top: 2px;
+    font-size: 0.72rem;
+    opacity: 0.8;
+    flex-shrink: 0;
+    font-style: normal;
+}
+
+.session-note-line {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border-left: 2px solid var(--accent-primary);
+    background: rgba(127, 127, 127, 0.08);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.note-view-tag {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    color: var(--accent-primary);
+    border: 1px solid var(--border-color);
+}
+
+.note-view-tag.session {
+    color: var(--text-primary);
+    background: var(--accent-glow);
+}
+
+/* Inline notes shown under each date in the Log-tab exercise history */
+.note-inline-row td {
+    padding: 0 0 8px;
+    border: none;
+}
+
+.note-inline-row.session-row td {
+    padding-top: 8px;
+}
+
+/* Set notes align with the Set column (via an empty Date cell); session note stays at base indent */
+.note-inline-row:not(.session-row) .exhist-note {
+    padding-left: 0;
+}
+
+.exhist-note {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0 3px 10px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.exhist-note > i {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    opacity: 0.85;
+    flex-shrink: 0;
+}
+
+.exhist-note-text {
+    color: var(--text-primary);
+    font-style: italic;
+    word-break: break-word;
+}
+
+/* Compact range selector in the Recent History header */
+.history-range-select {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+/* Indented "superset" bullet shown under a set in the history lists */
+.superset-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 2px 0 8px;
+    padding-left: 28px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--accent-primary);
+}
+
+.superset-note > i {
+    margin-top: 3px;
+    font-size: 0.7rem;
+    opacity: 0.9;
+    flex-shrink: 0;
+}
+
+.superset-note-body {
+    color: var(--text-secondary);
+}
+
+.superset-partner strong {
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+.superset-sep {
+    color: var(--text-secondary);
+}
+
+/* ============================= */
+/* Backup banner & settings      */
+/* ============================= */
+
+.backup-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+    font-size: 0.85rem;
+}
+
+.backup-banner[hidden] {
+    display: none;
+}
+
+.backup-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.backup-banner-text i {
+    color: var(--accent-primary);
+}
+
+.backup-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.backup-banner-btn {
+    background: var(--accent-primary);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.backup-banner-btn:hover {
+    opacity: 0.9;
+}
+
+.backup-banner-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.3rem;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+.backup-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 15px;
+}
+
+.backup-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* ============================= */
+/* Statistics (Settings)         */
+/* ============================= */
+
+.stats-summary {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stat-pill {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+}
+
+.stat-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent-primary);
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.stats-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: rgba(127, 127, 127, 0.06);
+    font-size: 0.85rem;
+}
+
+.stat-row-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.stat-row-meta {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    flex-shrink: 0;
 }

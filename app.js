@@ -1,5 +1,7 @@
 // State Management
 let workouts = [];
+let dayNotes = {}; // { 'YYYY-MM-DD': 'session note text' }
+let historyRangeDays = 7; // Recent History window on the Dashboard (7 or 30)
 let chartInstance = null;
 let currentCalendarDate = new Date(); // For Calendar View
 
@@ -13,8 +15,6 @@ const chartFilterDropdown = document.getElementById('chart-filter-dropdown');
 const exportBtn = document.getElementById('export-history');
 const importBtn = document.getElementById('import-history-btn');
 const importFile = document.getElementById('import-file');
-const totalWorkoutsEl = document.getElementById('total-workouts'); // Kept if needed, but unused now
-const totalVolumeEl = document.getElementById('total-volume'); // Kept if needed, but unused now
 const longestStreakEl = document.getElementById('longest-streak');
 const currentStreakEl = document.getElementById('current-streak');
 const lastWorkoutDateEl = document.getElementById('last-workout-date');
@@ -29,6 +29,14 @@ const supersetSetIndicator = document.getElementById('superset-set-indicator');
 const supersetExerciseToggle = document.getElementById('superset-exercise-toggle');
 const supersetExerciseDropdown = document.getElementById('superset-exercise-dropdown');
 
+// Notes Elements
+const setNoteToggle = document.getElementById('set-note-toggle');
+const setNoteWrapper = document.getElementById('set-note-wrapper');
+const setNoteInput = document.getElementById('set-note');
+const sessionNoteToggle = document.getElementById('session-note-toggle');
+const sessionNoteWrapper = document.getElementById('session-note-wrapper');
+const sessionNoteInput = document.getElementById('session-note');
+
 // Combobox Elements
 const exerciseInput = document.getElementById('exercise');
 const exerciseToggle = document.getElementById('exercise-toggle');
@@ -37,6 +45,9 @@ const exerciseDropdown = document.getElementById('exercise-dropdown');
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initThemeSwitcher();
+    initBackup();
+    initExerciseManagement();
+    requestPersistentStorage();
 
     // Set default date to today (Local Time)
     const today = new Date();
@@ -51,10 +62,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function initThemeSwitcher() {
     if (!themeSelect) return;
 
-    const savedThemeRaw = localStorage.getItem('fittrack-ui-theme') || 'neumorphism';
-    const savedTheme = savedThemeRaw === 'glassmorphism' ? 'glacial-flux' : savedThemeRaw;
+    // Only Glacial Flux and Ballerina remain; migrate any retired theme
+    // (glassmorphism / neumorphism / pixel) to the default.
+    const VALID_THEMES = ['glacial-flux', 'ballerina'];
+    const savedThemeRaw = localStorage.getItem('fittrack-ui-theme') || 'glacial-flux';
+    const savedTheme = VALID_THEMES.includes(savedThemeRaw) ? savedThemeRaw : 'glacial-flux';
     applyTheme(savedTheme);
     themeSelect.value = savedTheme;
+    if (savedTheme !== savedThemeRaw) {
+        localStorage.setItem('fittrack-ui-theme', savedTheme);
+    }
 
     themeSelect.addEventListener('change', (e) => {
         applyTheme(e.target.value);
@@ -85,6 +102,8 @@ function getThemeChartColors() {
 workoutForm.addEventListener('submit', (e) => {
     e.preventDefault();
 
+    saveSessionNote(); // Persist any unsaved session-note text for this date
+
     const exerciseRaw = document.getElementById('exercise').value.trim();
     const exercise = toTitleCase(exerciseRaw);
     const dateStr = document.getElementById('workout-date').value;
@@ -101,6 +120,11 @@ workoutForm.addEventListener('submit', (e) => {
         intensity: parseInt(document.getElementById('intensity').value),
         date: new Date(dateStr + 'T12:00:00').toISOString()
     };
+
+    const setNoteValue = setNoteInput ? setNoteInput.value.trim() : '';
+    if (setNoteValue) {
+        newWorkout.note = setNoteValue;
+    }
 
     pendingWorkouts.push(newWorkout);
 
@@ -154,23 +178,23 @@ workoutForm.addEventListener('submit', (e) => {
 
     updateSetIndicator(); // Update for next set
     updateSupersetSetIndicator();
+    resetSetNote(); // Clear the per-set note for the next set
 });
 
 clearHistoryBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all workout history? This cannot be undone.')) {
         workouts = [];
-        db.clearStore().then(() => {
+        dayNotes = {};
+        Promise.all([db.clearStore(), db.clearDayNotes()]).then(() => {
             updateUI();
             if (chartInstance) {
                 chartInstance.destroy();
                 chartInstance = null;
             }
-            if (intensityChartInstance) {
-                intensityChartInstance = null;
-            }
             renderCalendar();
             updateChartOptions();
             updateSetIndicator();
+            loadSessionNoteForDate();
         });
     }
 });
@@ -253,6 +277,7 @@ if (exerciseResetBtn) {
         toggleSupersetFields();
 
         hideAllDropdowns();
+        resetSetNote();
         renderExerciseHistory();
         updateSetIndicator();
         updateSupersetSetIndicator();
@@ -300,6 +325,99 @@ if (supersetExerciseToggle) {
             supersetExerciseInput.focus();
         }
     });
+}
+
+// --- Notes: Set & Session ---
+if (setNoteToggle) {
+    setNoteToggle.addEventListener('click', () => {
+        const willShow = setNoteWrapper.hidden;
+        setNoteWrapper.hidden = !willShow;
+        if (willShow) setNoteInput.focus();
+    });
+}
+
+if (sessionNoteToggle) {
+    sessionNoteToggle.addEventListener('click', () => {
+        const willShow = sessionNoteWrapper.hidden;
+        sessionNoteWrapper.hidden = !willShow;
+        if (willShow) sessionNoteInput.focus();
+    });
+}
+
+if (sessionNoteInput) {
+    sessionNoteInput.addEventListener('change', saveSessionNote);
+    sessionNoteInput.addEventListener('blur', saveSessionNote);
+}
+
+function resetSetNote() {
+    if (!setNoteInput) return;
+    setNoteInput.value = '';
+    if (setNoteWrapper) setNoteWrapper.hidden = true;
+    updateNoteToggleLabel(setNoteToggle, false);
+}
+
+function updateNoteToggleLabel(toggleBtn, hasContent) {
+    if (!toggleBtn) return;
+    toggleBtn.innerHTML = hasContent
+        ? '<i class="fa-solid fa-pen"></i> Edit'
+        : '<i class="fa-solid fa-plus"></i> Add';
+    toggleBtn.classList.toggle('has-note', !!hasContent);
+}
+
+function loadSessionNoteForDate() {
+    if (!sessionNoteInput) return;
+    const dateStr = document.getElementById('workout-date').value;
+    const existing = (dateStr && dayNotes[dateStr]) ? dayNotes[dateStr] : '';
+    sessionNoteInput.value = existing;
+    updateNoteToggleLabel(sessionNoteToggle, !!existing);
+    // Keep the box collapsed by default; the "Edit" label signals a note exists.
+    if (sessionNoteWrapper) sessionNoteWrapper.hidden = true;
+}
+
+function saveSessionNote() {
+    if (!sessionNoteInput) return;
+    const dateStr = document.getElementById('workout-date').value;
+    if (!dateStr) return;
+    const value = sessionNoteInput.value.trim();
+
+    const previous = dayNotes[dateStr] || '';
+    if (value === previous) return; // No change
+
+    if (value) {
+        dayNotes[dateStr] = value;
+        db.putDayNote({ date: dateStr, note: value }).catch(err => console.error(err));
+    } else {
+        delete dayNotes[dateStr];
+        db.deleteDayNote(dateStr).catch(err => console.error(err));
+    }
+
+    updateNoteToggleLabel(sessionNoteToggle, !!value);
+    renderHistory();
+    renderTodaysHistory();
+    renderExerciseHistory();
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function localDateKey(dateLike) {
+    return new Date(dateLike).toLocaleDateString('en-CA'); // YYYY-MM-DD local
+}
+
+function setNoteLineHTML(note) {
+    if (!note) return '';
+    return `<div class="set-note"><i class="fa-solid fa-pen-to-square"></i><span>${escapeHtml(note)}</span></div>`;
+}
+
+function sessionNoteLineHTML(note) {
+    if (!note) return '';
+    return `<div class="session-note-line"><i class="fa-solid fa-note-sticky"></i><span>${escapeHtml(note)}</span></div>`;
 }
 
 // Tab Switching
@@ -368,7 +486,17 @@ document.getElementById('workout-date').addEventListener('change', () => {
     updateSetIndicator();
     updateSupersetSetIndicator();
     renderTodaysHistory();
+    loadSessionNoteForDate();
 });
+
+// Recent History range selector (Dashboard)
+const historyRangeSelect = document.getElementById('history-range');
+if (historyRangeSelect) {
+    historyRangeSelect.addEventListener('change', (e) => {
+        historyRangeDays = parseInt(e.target.value, 10) || 7;
+        renderHistory();
+    });
+}
 
 // Calendar Navigation
 document.getElementById('prev-month').addEventListener('click', () => {
@@ -502,11 +630,25 @@ async function loadWorkouts() {
         }
 
         workouts = await db.getAllWorkouts();
+
+        const storedNotes = await db.getAllDayNotes();
+        dayNotes = {};
+        storedNotes.forEach(n => { dayNotes[n.date] = n.note; });
+
         sortWorkouts();
         sortWorkouts();
         updateUI();
         updateChartOptions();
         renderCalendar();
+        loadSessionNoteForDate();
+
+        // Keep the on-device snapshot fresh (only when we actually have data, so an
+        // accidental "Clear all" can't overwrite a good snapshot with an empty one)
+        if (workouts.length > 0) {
+            saveLocalSnapshot();
+        }
+        updateBackupStatusUI();
+        maybeShowBackupBanner();
 
         // Default chart view if data exists
     if (workouts.length > 0 && !chartFilter.value) {
@@ -619,9 +761,12 @@ function updateUI() {
     updateSummary();
     renderTodaysHistory();
     renderExerciseHistory();
+    updateExerciseManagementUI();
 }
 
-function getSupersetGroups(workoutList) {
+// Map each superset set's id -> the partner exercise name(s) in its superset group.
+// Lets us render superset sets as regular sets with a small "Superset with X" tag.
+function buildSupersetPartners(workoutList) {
     const groups = {};
     workoutList.forEach(w => {
         if (!w.supersetId) return;
@@ -629,14 +774,30 @@ function getSupersetGroups(workoutList) {
         groups[w.supersetId].push(w);
     });
 
-    return Object.values(groups)
-        .map(group => group.sort((a, b) => (a.supersetOrder || 0) - (b.supersetOrder || 0)))
-        .sort((a, b) => Math.max(...b.map(w => w.id)) - Math.max(...a.map(w => w.id)));
+    const partners = {};
+    Object.values(groups).forEach(group => {
+        group.forEach(w => {
+            // Keep the full partner set objects so we can show their reps/weight/intensity
+            partners[w.id] = group.filter(x => x.id !== w.id);
+        });
+    });
+    return partners;
 }
 
-function getSupersetGroupTitle(group) {
-    const round = group[0].supersetRound || '?';
-    return group[0].supersetLabel || `Superset ${round}`;
+function supersetLineHTML(partners) {
+    if (!partners || !partners.length) {
+        return `<div class="superset-note"><i class="fa-solid fa-link"></i><span>Superset</span></div>`;
+    }
+
+    const parts = partners.map(p => {
+        const intColor = getIntensityColor(p.intensity);
+        return `<span class="superset-partner">` +
+            `<strong>${escapeHtml(p.exercise)}</strong> · ${p.reps} × ${p.weight} lbs · ` +
+            `<span style="color: ${intColor};"><i class="fa-solid fa-fire"></i> ${(p.intensity || 0).toFixed(1)}</span>` +
+            `</span>`;
+    }).join('<span class="superset-sep">,</span> ');
+
+    return `<div class="superset-note"><i class="fa-solid fa-link"></i><span class="superset-note-body">Superset with ${parts}</span></div>`;
 }
 
 function renderTodaysHistory() {
@@ -662,54 +823,10 @@ function renderTodaysHistory() {
         return;
     }
 
-    const supersetGroups = getSupersetGroups(todaysWorkouts);
-    const normalWorkouts = todaysWorkouts.filter(w => !w.supersetId);
+    // Session note sits at the very top so the day's context is read first
+    list.insertAdjacentHTML('beforeend', sessionNoteLineHTML(dayNotes[dateStr]));
 
-    supersetGroups.forEach(groupWorkouts => {
-        const supersetGroup = document.createElement('div');
-        supersetGroup.className = 'superset-history-group';
-
-        supersetGroup.innerHTML = `
-            <div class="superset-history-header">
-                <span><i class="fa-solid fa-link"></i> ${getSupersetGroupTitle(groupWorkouts)}</span>
-                <small>Round ${groupWorkouts[0].supersetRound || '?'}</small>
-            </div>
-        `;
-
-        groupWorkouts.forEach(w => {
-            const item = document.createElement('div');
-            item.className = 'superset-history-item';
-            const wIntColor = getIntensityColor(w.intensity);
-
-            item.innerHTML = `
-                <div class="superset-set-main">
-                    <span class="superset-exercise-name">${w.exercise}</span>
-                    <span style="font-weight: 600; color: var(--accent-primary);">Set ${w.setNumber || '?'}</span>
-                    <span>${w.reps} x ${w.weight} lbs</span>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="font-size: 0.8rem; font-weight: 600; color: ${wIntColor}; display: flex; align-items: center; gap: 4px;">
-                        <i class="fa-solid fa-fire"></i> ${(w.intensity || 0).toFixed(1)}
-                    </span>
-                    <button class="delete-btn" onclick="deleteWorkout(${w.id})" title="Delete Set" style="padding: 0;">
-                         <i class="fa-solid fa-trash" style="font-size: 0.8rem;"></i>
-                    </button>
-                </div>
-            `;
-            supersetGroup.appendChild(item);
-        });
-
-        list.appendChild(supersetGroup);
-    });
-
-    // Group regular sets by Exercise
-    const grouped = {};
-    normalWorkouts.forEach(w => {
-        if (!grouped[w.exercise]) grouped[w.exercise] = [];
-        grouped[w.exercise].push(w);
-    });
-
-    // Calculate Day's Average Intensity
+    // Day's overview average — over ALL of the day's sets (supersets included)
     const totalDayIntensity = todaysWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0);
     const avgDayIntensity = (totalDayIntensity / todaysWorkouts.length).toFixed(1);
     const dayColor = getIntensityColor(parseFloat(avgDayIntensity));
@@ -729,11 +846,19 @@ function renderTodaysHistory() {
     `;
     list.appendChild(dayHeader);
 
+    // Group ALL sets by exercise — supersets are treated as regular sets
+    const supersetPartners = buildSupersetPartners(todaysWorkouts);
+    const grouped = {};
+    todaysWorkouts.forEach(w => {
+        if (!grouped[w.exercise]) grouped[w.exercise] = [];
+        grouped[w.exercise].push(w);
+    });
+
     Object.keys(grouped).forEach(ex => {
         const group = document.createElement('div');
         group.style.marginBottom = '10px';
 
-        // Exercise Avg
+        // Exercise average (now includes any superset sets for this exercise)
         const exTotalInt = grouped[ex].reduce((sum, w) => sum + (w.intensity || 0), 0);
         const exAvgInt = (exTotalInt / grouped[ex].length).toFixed(1);
         const intensityColor = getIntensityColor(parseFloat(exAvgInt));
@@ -776,6 +901,10 @@ function renderTodaysHistory() {
                 </div>
             `;
             group.appendChild(item);
+            if (w.supersetId) {
+                group.insertAdjacentHTML('beforeend', supersetLineHTML(supersetPartners[w.id]));
+            }
+            group.insertAdjacentHTML('beforeend', setNoteLineHTML(w.note));
         });
         list.appendChild(group);
     });
@@ -811,27 +940,75 @@ function renderExerciseHistory() {
     container.style.display = 'block';
     const last5 = history.slice(0, 5);
 
+    // Group the displayed sets by date (most-recent-first) so notes attach to their date
+    const byDate = [];
+    const dateIndex = {};
+    last5.forEach(w => {
+        const key = localDateKey(w.date);
+        if (!(key in dateIndex)) {
+            dateIndex[key] = byDate.length;
+            byDate.push({ key, date: new Date(w.date), sets: [] });
+        }
+        byDate[dateIndex[key]].sets.push(w);
+    });
+
     let html = '<table style="width: 100%; text-align: left; border-collapse: collapse;">';
     html += '<thead><tr><th style="padding-bottom: 5px; color: var(--accent-secondary);">Date</th><th style="color: var(--accent-secondary);">Set</th><th style="color: var(--accent-secondary);">Reps</th><th style="color: var(--accent-secondary);">Lbs</th><th style="color: var(--accent-secondary);">Int.</th></tr></thead><tbody>';
 
-    last5.forEach(w => {
-        const date = new Date(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-        const intensityValue = Number(w.intensity || 0).toFixed(1);
-        const intensityColor = getIntensityColor(Number(w.intensity || 0));
-        html += `
-            <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
-                <td style="padding: 4px 0;">${date}</td>
-                <td>${w.setNumber || 1}</td>
-                <td>${w.reps}</td>
-                <td>${w.weight}</td>
-                <td>
-                    <span style="color: ${intensityColor}; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                        <i class="fa-solid fa-fire" style="font-size: 0.7rem;"></i> ${intensityValue}
-                    </span>
-                </td>
-            </tr>
-        `;
+    byDate.forEach(group => {
+        const dateLabel = group.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+        // Session note sits on top of each date
+        const sessionNote = dayNotes[group.key];
+        if (sessionNote) {
+            html += `
+                <tr class="note-inline-row session-row">
+                    <td colspan="5">
+                        <div class="exhist-note">
+                            <i class="fa-solid fa-note-sticky"></i>
+                            <span class="note-view-tag session">session</span>
+                            <span class="exhist-note-text">${escapeHtml(sessionNote)}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        group.sets.forEach((w, idx) => {
+            const intensityValue = Number(w.intensity || 0).toFixed(1);
+            const intensityColor = getIntensityColor(Number(w.intensity || 0));
+            html += `
+                <tr style="border-top: 1px solid rgba(255,255,255,0.1);">
+                    <td style="padding: 4px 0;">${idx === 0 ? dateLabel : ''}</td>
+                    <td>${w.setNumber || 1}</td>
+                    <td>${w.reps}</td>
+                    <td>${w.weight}</td>
+                    <td>
+                        <span style="color: ${intensityColor}; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fa-solid fa-fire" style="font-size: 0.7rem;"></i> ${intensityValue}
+                        </span>
+                    </td>
+                </tr>
+            `;
+
+            // Set note aligned under the Set column (empty Date cell; note spans Set..Int)
+            if (w.note) {
+                html += `
+                    <tr class="note-inline-row">
+                        <td></td>
+                        <td colspan="4">
+                            <div class="exhist-note">
+                                <i class="fa-solid fa-note-sticky"></i>
+                                <span class="note-view-tag">Set ${w.setNumber || 1}</span>
+                                <span class="exhist-note-text">${escapeHtml(w.note)}</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
     });
+
     html += '</tbody></table>';
     container.innerHTML = html;
 }
@@ -848,9 +1025,24 @@ function renderHistory() {
         return;
     }
 
+    // Only render workouts within the selected window so the DOM stays light as data grows
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - (historyRangeDays - 1));
+    const inRange = workouts.filter(w => new Date(w.date) >= cutoff);
+
+    if (inRange.length === 0) {
+        historyList.innerHTML = `
+            <div class="empty-state">
+                <p>No workouts in the last ${historyRangeDays} days.</p>
+            </div>
+        `;
+        return;
+    }
+
     // Group by Date
     const groupedByDate = {};
-    workouts.forEach(workout => {
+    inRange.forEach(workout => {
         const dateKey = new Date(workout.date).toLocaleDateString(undefined, {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
@@ -885,54 +1077,12 @@ function renderHistory() {
             </div>
         `;
         dateGroup.appendChild(dateHeader);
+        dateGroup.insertAdjacentHTML('beforeend', sessionNoteLineHTML(dayNotes[localDateKey(groupedByDate[date][0].date)]));
 
-        const supersetGroups = getSupersetGroups(groupedByDate[date]);
-        supersetGroups.forEach(groupWorkouts => {
-            const supersetGroup = document.createElement('div');
-            supersetGroup.className = 'history-exercise-group superset-history-group';
-
-            const supersetHeader = document.createElement('div');
-            supersetHeader.className = 'history-exercise-header superset-history-header';
-            supersetHeader.innerHTML = `
-                <h4><i class="fa-solid fa-link"></i> ${getSupersetGroupTitle(groupWorkouts)}</h4>
-                <span style="font-size: 0.8rem; color: var(--text-secondary);">Round ${groupWorkouts[0].supersetRound || '?'}</span>
-            `;
-            supersetGroup.appendChild(supersetHeader);
-
-            const setList = document.createElement('div');
-            setList.className = 'history-set-list';
-
-            groupWorkouts.forEach(workout => {
-                const setItem = document.createElement('div');
-                setItem.className = 'history-set-item superset-history-item';
-                setItem.innerHTML = `
-                    <div class="set-details">
-                        <span style="min-width: 110px; font-weight: 600; color: var(--text-primary);">
-                            ${workout.exercise}
-                        </span>
-                        <span style="font-weight: 600; color: var(--accent-primary);">Set ${workout.setNumber || 1}</span>
-                        <span><i class="fa-solid fa-rotate-right"></i> ${workout.reps} Reps</span>
-                        <span><i class="fa-solid fa-weight-hanging"></i> ${workout.weight} lbs</span>
-                    </div>
-                    <div class="set-meta">
-                        <span style="font-size: 0.85rem; font-weight: 600; color: ${getIntensityColor(workout.intensity)}; margin-right: 5px; display: flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-fire"></i> ${(workout.intensity || 0).toFixed(1)}
-                        </span>
-                        <button class="delete-btn" onclick="deleteWorkout(${workout.id})" title="Delete Set">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                setList.appendChild(setItem);
-            });
-
-            supersetGroup.appendChild(setList);
-            dateGroup.appendChild(supersetGroup);
-        });
-
-        // Group regular sets by Exercise within Date
+        // Group ALL sets by Exercise within the date — supersets are treated as regular sets
+        const supersetPartners = buildSupersetPartners(groupedByDate[date]);
         const exercisesInDate = {};
-        groupedByDate[date].filter(workout => !workout.supersetId).forEach(workout => {
+        groupedByDate[date].forEach(workout => {
             if (!exercisesInDate[workout.exercise]) exercisesInDate[workout.exercise] = [];
             exercisesInDate[workout.exercise].push(workout);
         });
@@ -991,6 +1141,10 @@ function renderHistory() {
                     </div>
                 `;
                 setList.appendChild(setItem);
+                if (workout.supersetId) {
+                    setList.insertAdjacentHTML('beforeend', supersetLineHTML(supersetPartners[workout.id]));
+                }
+                setList.insertAdjacentHTML('beforeend', setNoteLineHTML(workout.note));
             });
 
             exerciseGroup.appendChild(setList);
@@ -1307,10 +1461,6 @@ function getIntensityColor(level) {
     return '#10b981'; // Green
 }
 
-function formatNumber(num) {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
 function toTitleCase(str) {
     return str.replace(/\w\S*/g, function (txt) {
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
@@ -1318,17 +1468,8 @@ function toTitleCase(str) {
 }
 
 function exportWorkouts() {
-    const dataStr = JSON.stringify(workouts, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `workouts_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const dataStr = JSON.stringify(buildExportPayload(), null, 2);
+    downloadJson(dataStr, `workouts_${new Date().toISOString().split('T')[0]}.json`);
 }
 
 function importWorkouts(event) {
@@ -1338,32 +1479,46 @@ function importWorkouts(event) {
     const reader = new FileReader();
     reader.onload = function (e) {
         try {
-            const importedWorkouts = JSON.parse(e.target.result);
+            const parsed = JSON.parse(e.target.result);
+
+            // Support both the legacy array format and the new { workouts, dayNotes } object
+            const importedWorkouts = Array.isArray(parsed) ? parsed : parsed.workouts;
+            const importedDayNotes = (!Array.isArray(parsed) && Array.isArray(parsed.dayNotes)) ? parsed.dayNotes : [];
+
             if (!Array.isArray(importedWorkouts)) throw new Error('Invalid format');
 
-            // Merge strategy: Filter out duplicates based on ID
+            // Merge workouts: filter out duplicates based on ID
             const existingIds = new Set(workouts.map(w => w.id));
-            let addedCount = 0;
+            const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
 
-            importedWorkouts.forEach(w => {
-                if (!existingIds.has(w.id)) {
-                    workouts.push(w);
-                    addedCount++;
-                }
-            });
+            // Merge day notes: imported notes overwrite by date
+            const newDayNotes = importedDayNotes.filter(n => n && n.date && n.note);
+            newDayNotes.forEach(n => { dayNotes[n.date] = n.note; });
 
-            if (addedCount > 0) {
-                // Add new workouts to DB
-                const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
-                db.bulkAdd(newWorkouts).then(() => {
-                    sortWorkouts();
-                    updateUI();
-                    updateChartOptions();
-                    alert(`Successfully imported ${addedCount} workouts.`);
-                });
-            } else {
-                alert('No new workouts found to import.');
+            if (newWorkouts.length === 0 && newDayNotes.length === 0) {
+                alert('No new data found to import.');
+                event.target.value = '';
+                return;
             }
+
+            newWorkouts.forEach(w => workouts.push(w));
+
+            const tasks = [];
+            if (newWorkouts.length) tasks.push(db.bulkAdd(newWorkouts));
+            if (newDayNotes.length) tasks.push(db.bulkAddDayNotes(newDayNotes));
+
+            Promise.all(tasks).then(() => {
+                sortWorkouts();
+                updateUI();
+                updateChartOptions();
+                renderCalendar();
+                loadSessionNoteForDate();
+
+                const parts = [];
+                if (newWorkouts.length) parts.push(`${newWorkouts.length} workouts`);
+                if (newDayNotes.length) parts.push(`${newDayNotes.length} session notes`);
+                alert(`Successfully imported ${parts.join(' and ')}.`);
+            });
         } catch (err) {
             alert('Error importing file: ' + err.message);
         }
@@ -1371,6 +1526,349 @@ function importWorkouts(event) {
         event.target.value = '';
     };
     reader.readAsText(file);
+}
+
+// ===== Backup & On-Device Snapshot =====
+
+const BACKUP_KEYS = {
+    reminder: 'fittrack-backup-reminder',
+    filename: 'fittrack-backup-filename',
+    lastBackup: 'fittrack-last-backup-iso',
+    dismissed: 'fittrack-backup-dismissed-date'
+};
+
+const backupBanner = document.getElementById('backup-banner');
+
+function buildExportPayload() {
+    return {
+        workouts,
+        dayNotes: Object.entries(dayNotes).map(([date, note]) => ({ date, note }))
+    };
+}
+
+function downloadJson(json, filename) {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function getBackupFilename() {
+    let name = (localStorage.getItem(BACKUP_KEYS.filename) || '').trim();
+    if (!name) name = 'fittrack-backup.json';
+    if (!/\.json$/i.test(name)) name += '.json';
+    return name;
+}
+
+function isBackupReminderEnabled() {
+    const stored = localStorage.getItem(BACKUP_KEYS.reminder);
+    return stored === null ? true : stored === 'true';
+}
+
+function getLastBackupDateKey() {
+    const iso = localStorage.getItem(BACKUP_KEYS.lastBackup);
+    return iso ? new Date(iso).toLocaleDateString('en-CA') : null;
+}
+
+function markBackedUpToday() {
+    localStorage.setItem(BACKUP_KEYS.lastBackup, new Date().toISOString());
+}
+
+async function saveLocalSnapshot() {
+    try {
+        await db.putSnapshot({ id: 'latest', timestamp: Date.now(), data: buildExportPayload() });
+    } catch (err) {
+        console.error('Snapshot failed:', err);
+    }
+}
+
+async function runBackup() {
+    const json = JSON.stringify(buildExportPayload(), null, 2);
+    const filename = getBackupFilename();
+
+    // Keep the on-device snapshot in sync with each backup
+    await saveLocalSnapshot();
+
+    const file = new File([json], filename, { type: 'application/json' });
+
+    let handled = false;
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: 'FitTrack Backup', text: 'FitTrack workout backup' });
+            handled = true;
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                return false; // user cancelled the share — don't mark as backed up
+            }
+            // otherwise fall through to a normal download
+        }
+    }
+
+    if (!handled) {
+        downloadJson(json, filename);
+    }
+
+    markBackedUpToday();
+    hideBackupBanner();
+    updateBackupStatusUI();
+    return true;
+}
+
+async function restoreLocalSnapshot() {
+    let snap = null;
+    try {
+        snap = await db.getSnapshot('latest');
+    } catch (err) {
+        console.error(err);
+    }
+    if (!snap || !snap.data) {
+        alert('No on-device snapshot found yet. Make a backup first.');
+        return;
+    }
+
+    const when = new Date(snap.timestamp).toLocaleString();
+    if (!confirm(`Restore your on-device snapshot from ${when}? Missing workouts and session notes will be added back.`)) {
+        return;
+    }
+
+    const data = snap.data;
+    const importedWorkouts = Array.isArray(data.workouts) ? data.workouts : [];
+    const importedDayNotes = Array.isArray(data.dayNotes) ? data.dayNotes : [];
+
+    const existingIds = new Set(workouts.map(w => w.id));
+    const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
+    newWorkouts.forEach(w => workouts.push(w));
+
+    const newDayNotes = importedDayNotes.filter(n => n && n.date && n.note);
+    newDayNotes.forEach(n => { dayNotes[n.date] = n.note; });
+
+    const tasks = [];
+    if (newWorkouts.length) tasks.push(db.bulkAdd(newWorkouts));
+    if (newDayNotes.length) tasks.push(db.bulkAddDayNotes(newDayNotes));
+    await Promise.all(tasks);
+
+    sortWorkouts();
+    updateUI();
+    updateChartOptions();
+    renderCalendar();
+    loadSessionNoteForDate();
+    updateBackupStatusUI();
+    alert(`Restored ${newWorkouts.length} workouts and ${newDayNotes.length} session notes.`);
+}
+
+// --- Smart daily backup banner ---
+function showBackupBanner() {
+    if (backupBanner) backupBanner.hidden = false;
+}
+
+function hideBackupBanner() {
+    if (backupBanner) backupBanner.hidden = true;
+}
+
+function dismissBackupBannerForToday() {
+    localStorage.setItem(BACKUP_KEYS.dismissed, new Date().toLocaleDateString('en-CA'));
+    hideBackupBanner();
+}
+
+function maybeShowBackupBanner() {
+    if (!isBackupReminderEnabled()) return;
+    if (workouts.length === 0) return;                 // nothing to back up yet
+    const today = new Date().toLocaleDateString('en-CA');
+    if (getLastBackupDateKey() === today) return;      // already backed up today
+    if (localStorage.getItem(BACKUP_KEYS.dismissed) === today) return; // dismissed today
+    showBackupBanner();
+}
+
+function updateBackupStatusUI() {
+    const statusEl = document.getElementById('backup-status');
+    if (!statusEl) return;
+    const iso = localStorage.getItem(BACKUP_KEYS.lastBackup);
+    statusEl.textContent = iso
+        ? `Last backup: ${new Date(iso).toLocaleString()}`
+        : 'Last backup: never';
+}
+
+function requestPersistentStorage() {
+    if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(() => {});
+    }
+}
+
+// Emergency recovery for a stuck/stale PWA: clears Cache Storage and unregisters
+// service workers, then reloads. Deliberately does NOT touch localStorage or
+// IndexedDB, so workouts, notes, and settings are preserved.
+async function resetPwaCacheOnly() {
+    if (!confirm('Reload the app and clear its cached files?\n\nThis fixes stuck updates / refresh-crash issues. Your workouts, notes, and settings are kept.')) {
+        return;
+    }
+    try {
+        if (window.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map((reg) => reg.unregister()));
+        }
+    } catch (err) {
+        console.error('Cache reset failed:', err);
+    }
+    window.location.reload();
+}
+
+function initBackup() {
+    const reminderToggle = document.getElementById('backup-reminder-toggle');
+    const filenameInput = document.getElementById('backup-filename');
+    const backupNowBtn = document.getElementById('backup-now');
+    const restoreBtn = document.getElementById('restore-snapshot');
+    const bannerSave = document.getElementById('backup-banner-save');
+    const bannerDismiss = document.getElementById('backup-banner-dismiss');
+
+    if (reminderToggle) {
+        reminderToggle.checked = isBackupReminderEnabled();
+        reminderToggle.addEventListener('change', () => {
+            localStorage.setItem(BACKUP_KEYS.reminder, reminderToggle.checked ? 'true' : 'false');
+            if (!reminderToggle.checked) hideBackupBanner();
+        });
+    }
+
+    if (filenameInput) {
+        filenameInput.value = getBackupFilename();
+        filenameInput.addEventListener('change', () => {
+            localStorage.setItem(BACKUP_KEYS.filename, filenameInput.value.trim());
+            filenameInput.value = getBackupFilename(); // normalize (default + .json)
+        });
+    }
+
+    const resetCacheBtn = document.getElementById('reset-cache');
+
+    if (backupNowBtn) backupNowBtn.addEventListener('click', runBackup);
+    if (restoreBtn) restoreBtn.addEventListener('click', restoreLocalSnapshot);
+    if (bannerSave) bannerSave.addEventListener('click', runBackup);
+    if (bannerDismiss) bannerDismiss.addEventListener('click', dismissBackupBannerForToday);
+    if (resetCacheBtn) resetCacheBtn.addEventListener('click', resetPwaCacheOnly);
+
+    updateBackupStatusUI();
+}
+
+// ===== Exercise Management: rename + statistics (Settings) =====
+
+function initExerciseManagement() {
+    const renameBtn = document.getElementById('rename-exercise-btn');
+    if (renameBtn) renameBtn.addEventListener('click', renameExercise);
+    updateExerciseManagementUI();
+}
+
+function updateExerciseManagementUI() {
+    renderStats();
+    updateRenameOptions();
+}
+
+function updateRenameOptions() {
+    const select = document.getElementById('rename-exercise-select');
+    if (!select) return;
+
+    const current = select.value;
+    const names = [...new Set(workouts.map(w => w.exercise))].sort();
+
+    select.innerHTML = '';
+    if (names.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No exercises yet';
+        select.appendChild(opt);
+        return;
+    }
+    names.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+    });
+    if (names.includes(current)) select.value = current;
+}
+
+function renderStats() {
+    const summary = document.getElementById('stats-summary');
+    const breakdown = document.getElementById('stats-breakdown');
+    if (!summary || !breakdown) return;
+
+    const totalSets = workouts.length;
+    const byExercise = {};
+    workouts.forEach(w => {
+        if (!byExercise[w.exercise]) byExercise[w.exercise] = { sets: 0, dates: new Set() };
+        byExercise[w.exercise].sets++;
+        byExercise[w.exercise].dates.add(localDateKey(w.date));
+    });
+    const names = Object.keys(byExercise);
+
+    summary.innerHTML = `
+        <div class="stat-pill"><span class="stat-num">${totalSets}</span><span class="stat-label">Total sets</span></div>
+        <div class="stat-pill"><span class="stat-num">${names.length}</span><span class="stat-label">Exercises</span></div>
+    `;
+
+    if (totalSets === 0) {
+        breakdown.innerHTML = '<p class="backup-status">No workouts logged yet.</p>';
+        return;
+    }
+
+    breakdown.innerHTML = names
+        .sort((a, b) => byExercise[b].sets - byExercise[a].sets || a.localeCompare(b))
+        .map(name => `
+            <div class="stat-row">
+                <span class="stat-row-name">${escapeHtml(name)}</span>
+                <span class="stat-row-meta">${byExercise[name].sets} sets &middot; ${byExercise[name].dates.size} sessions</span>
+            </div>
+        `).join('');
+}
+
+async function renameExercise() {
+    const select = document.getElementById('rename-exercise-select');
+    const newInput = document.getElementById('rename-exercise-new');
+    if (!select || !newInput) return;
+
+    const oldName = select.value;
+    const newName = toTitleCase(newInput.value.trim());
+
+    if (!oldName) { alert('No exercise selected.'); return; }
+    if (!newName) { alert('Please enter a new name.'); return; }
+    if (newName === oldName) { alert('That is already the name.'); return; }
+
+    const affected = workouts.filter(w => w.exercise === oldName);
+    if (affected.length === 0) { alert('No records found for that exercise.'); return; }
+
+    const willMerge = workouts.some(w => w.exercise === newName);
+    const message = willMerge
+        ? `Rename ${affected.length} set(s) from "${oldName}" to "${newName}"?\n\n"${newName}" already exists, so these will be merged into it.`
+        : `Rename ${affected.length} set(s) from "${oldName}" to "${newName}"?`;
+    if (!confirm(message)) return;
+
+    affected.forEach(w => { w.exercise = newName; });
+    await db.bulkAdd(affected);
+
+    // Renumber sets per affected date under the new name (fixes any merge collisions)
+    const dateKeys = [...new Set(affected.map(w => getWorkoutDateKey(w)))];
+    for (const dateKey of dateKeys) {
+        await normalizeSetNumbers(newName, dateKey);
+    }
+
+    if (chartFilter.value === oldName) {
+        chartFilter.value = newName;
+    }
+
+    sortWorkouts();
+    updateUI();
+    updateChartOptions();
+    if (chartFilter.value) renderChart(chartFilter.value);
+    renderCalendar();
+
+    newInput.value = '';
+    alert(`Renamed "${oldName}" to "${newName}".`);
 }
 
 // Combobox Functions

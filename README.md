@@ -16,6 +16,7 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.27**: Added per-set & session notes (with inline history views), a Recent History 7/30-day filter, supersets now logged as regular sets (counted in averages) with a partner-stats bullet, swapped Reps/Weight input positions, and new Backup tools (one-tap share-sheet export with a fixed filename, a daily reminder banner, and an on-device snapshot + restore). Hardened the iOS home-screen PWA against stale-cache/refresh-crash issues: versioned service-worker cache with old-cache cleanup, `skipWaiting`/`clients.claim`, a network-first app shell, versioned manifest/icon references, and a "Reset app cache" tool in Settings. Added Settings tools to rename an exercise across all records (with merge) and a simple statistics breakdown (sets per exercise, sessions, and totals). Reduced the theme set to Glacial Flux and Ballerina (retired Neumorphism and Pixel Art, with automatic migration of saved themes), fixed a crash in "Clear All Data" (undeclared `intensityChartInstance`), and removed dead code/CSS.
 - **v1.26**: Renamed Glassmorphism to Glacial Flux and updated the palette.
 - **v1.25**: Added a dropdown for superset exercise selection, updated superset labels, and refined Ballerina dropdown styling.
 - **v1.24**: Refined Neumorphism controls, increased Glassmorphism nav translucency, and added the Ballerina theme.

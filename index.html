@@ -6,15 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FitTrack | Premium Workout Tracker</title>
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
+    <!-- PWA Manifest (?v= busts stale manifest/icon caches on iOS after a deploy) -->
+    <link rel="manifest" href="manifest.json?v=v1.27">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.27">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,6 +29,17 @@
     <div class="background-glow"></div>
 
     <div class="app-container">
+        <div id="backup-banner" class="backup-banner" hidden>
+            <span class="backup-banner-text">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Back up today's workout data
+            </span>
+            <div class="backup-banner-actions">
+                <button type="button" id="backup-banner-save" class="backup-banner-btn">Back up</button>
+                <button type="button" id="backup-banner-dismiss" class="backup-banner-close"
+                    aria-label="Dismiss reminder">&times;</button>
+            </div>
+        </div>
+
         <header>
             <div class="logo">
                 <i class="fa-solid fa-dumbbell"></i>
@@ -92,6 +103,10 @@
                     <section class="card history-section">
                         <div class="card-header">
                             <h2><i class="fa-solid fa-clock-rotate-left"></i> Recent History</h2>
+                            <select id="history-range" class="history-range-select" aria-label="History range">
+                                <option value="7">Last 7 days</option>
+                                <option value="30">Last 30 days</option>
+                            </select>
                         </div>
                         <div id="history-list" class="history-list">
                             <!-- History items will be injected here -->
@@ -162,6 +177,19 @@
                             <input type="date" id="workout-date" required>
                         </div>
 
+                        <div class="form-group note-group">
+                            <div class="form-label-row">
+                                <label for="session-note">Session Note</label>
+                                <button type="button" id="session-note-toggle" class="btn-reset note-toggle">
+                                    <i class="fa-solid fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div id="session-note-wrapper" class="note-wrapper" hidden>
+                                <textarea id="session-note" class="note-input" rows="2"
+                                    placeholder="How's the whole session? (e.g. low energy, slept poorly, deload week)"></textarea>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <div class="form-label-row">
                                 <label for="exercise">Exercise Name</label>
@@ -186,12 +214,12 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="reps">Reps</label>
+                                <label for="weight">Weight (lbs)</label>
                                 <div class="stepper-control">
-                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', -1)"><i
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', -5)"><i
                                             class="fa-solid fa-minus"></i></button>
-                                    <input type="number" id="reps" placeholder="0" min="1" required>
-                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', 1)"><i
+                                    <input type="number" id="weight" placeholder="0" min="0" step="0.5" required>
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', 5)"><i
                                             class="fa-solid fa-plus"></i></button>
                                 </div>
                             </div>
@@ -203,12 +231,12 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="weight">Weight (lbs)</label>
+                                <label for="reps">Reps</label>
                                 <div class="stepper-control">
-                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', -5)"><i
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', -1)"><i
                                             class="fa-solid fa-minus"></i></button>
-                                    <input type="number" id="weight" placeholder="0" min="0" step="0.5" required>
-                                    <button type="button" class="stepper-btn" onclick="adjustValue('weight', 5)"><i
+                                    <input type="number" id="reps" placeholder="0" min="1" required>
+                                    <button type="button" class="stepper-btn" onclick="adjustValue('reps', 1)"><i
                                             class="fa-solid fa-plus"></i></button>
                                 </div>
                             </div>
@@ -217,6 +245,19 @@
                                 <input type="range" id="intensity" min="1" max="10" value="5"
                                     oninput="this.nextElementSibling.value = this.value">
                                 <output>5</output>
+                            </div>
+                        </div>
+
+                        <div class="form-group note-group">
+                            <div class="form-label-row">
+                                <label for="set-note">Set Note</label>
+                                <button type="button" id="set-note-toggle" class="btn-reset note-toggle">
+                                    <i class="fa-solid fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <div id="set-note-wrapper" class="note-wrapper" hidden>
+                                <textarea id="set-note" class="note-input" rows="2"
+                                    placeholder="Note for this set (e.g. felt heavy, last rep grindy, tweaked form)"></textarea>
                             </div>
                         </div>
 
@@ -249,12 +290,12 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="superset-reps">Reps</label>
+                                    <label for="superset-weight">Weight (lbs)</label>
                                     <div class="stepper-control">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', -1)"><i
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', -5)"><i
                                                 class="fa-solid fa-minus"></i></button>
-                                        <input type="number" id="superset-reps" placeholder="0" min="1">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', 1)"><i
+                                        <input type="number" id="superset-weight" placeholder="0" min="0" step="0.5">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', 5)"><i
                                                 class="fa-solid fa-plus"></i></button>
                                     </div>
                                 </div>
@@ -266,12 +307,12 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="superset-weight">Weight (lbs)</label>
+                                    <label for="superset-reps">Reps</label>
                                     <div class="stepper-control">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', -5)"><i
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', -1)"><i
                                                 class="fa-solid fa-minus"></i></button>
-                                        <input type="number" id="superset-weight" placeholder="0" min="0" step="0.5">
-                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-weight', 5)"><i
+                                        <input type="number" id="superset-reps" placeholder="0" min="1">
+                                        <button type="button" class="stepper-btn" onclick="adjustValue('superset-reps', 1)"><i
                                                 class="fa-solid fa-plus"></i></button>
                                     </div>
                                 </div>
@@ -313,11 +354,66 @@
                         <div class="settings-actions">
                             <label for="theme-select">UI Style</label>
                             <select id="theme-select">
-                                <option value="neumorphism">Neumorphism</option>
                                 <option value="glacial-flux">Glacial Flux</option>
                                 <option value="ballerina">Ballerina</option>
-                                <option value="pixel">Pixel Art</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>Statistics</h3>
+                        <div class="settings-actions">
+                            <div id="stats-summary" class="stats-summary"></div>
+                            <div id="stats-breakdown" class="stats-breakdown"></div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>Edit Workout Names</h3>
+                        <div class="settings-actions">
+                            <label for="rename-exercise-select">Exercise to rename</label>
+                            <select id="rename-exercise-select" style="margin-bottom: 12px;"></select>
+
+                            <label for="rename-exercise-new">New name</label>
+                            <input type="text" id="rename-exercise-new" placeholder="e.g. Bench Press"
+                                autocomplete="off" style="margin-bottom: 12px;">
+
+                            <button id="rename-exercise-btn" class="btn-secondary" style="width: 100%;">
+                                <i class="fa-solid fa-pen"></i> Rename across all records
+                            </button>
+                            <p class="backup-hint">Renames every set logged under the selected exercise. If the new name
+                                matches another exercise, they'll be merged.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>Backup</h3>
+                        <div class="settings-actions">
+                            <label class="checkbox-label" for="backup-reminder-toggle"
+                                style="margin-bottom: 15px;">
+                                <input type="checkbox" id="backup-reminder-toggle">
+                                <span class="checkbox-copy">
+                                    <strong>Daily backup reminder</strong>
+                                    <small>Show a banner once a day until you've backed up</small>
+                                </span>
+                            </label>
+
+                            <label for="backup-filename">Backup file name</label>
+                            <input type="text" id="backup-filename" placeholder="fittrack-backup.json"
+                                autocomplete="off" style="margin-bottom: 8px;">
+                            <p class="backup-hint">Tip: the first time, tap <strong>Back up</strong> &rarr; <strong>Save
+                                to Files</strong> &rarr; a folder named <strong>workouts</strong>. iOS remembers that
+                                folder, and the fixed file name replaces the previous backup instead of piling up
+                                copies.</p>
+
+                            <button id="backup-now" class="btn-secondary" style="width: 100%; margin-bottom: 15px;">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Back up now
+                            </button>
+                            <button id="restore-snapshot" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 15px;">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Restore last snapshot
+                            </button>
+                            <p id="backup-status" class="backup-status">Last backup: never</p>
                         </div>
                     </div>
 
@@ -337,11 +433,24 @@
                             </button>
                         </div>
                     </div>
+
+                    <div class="settings-group">
+                        <h3>Troubleshooting</h3>
+                        <div class="settings-actions">
+                            <button id="reset-cache" class="btn-secondary"
+                                style="width: 100%; margin-bottom: 10px;">
+                                <i class="fa-solid fa-rotate"></i> Reset app cache
+                            </button>
+                            <p class="backup-hint">Fixes stuck updates / refresh-crash issues by clearing cached app
+                                files and reloading. Your workouts, notes, and settings are kept.</p>
+                            <p class="backup-status">App version: v1.27</p>
+                        </div>
+                    </div>
                 </section>
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.26
+            v1.27
         </footer>
     </div>
 
@@ -350,8 +459,13 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(reg => console.log('Service Worker registered'))
+                // updateViaCache:'none' forces the browser to re-check service-worker.js
+                // on every load (not from HTTP cache), so deploys are picked up promptly.
+                navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' })
+                    .then(reg => {
+                        reg.update();
+                        console.log('Service Worker registered');
+                    })
                     .catch(err => console.log('Service Worker registration failed:', err));
             });
         }
