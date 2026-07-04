@@ -1532,10 +1532,31 @@ body[data-theme="ballerina"] .time-box input {
     font-size: 1rem;
 }
 
+/* Date | Distance row: date gets a little extra room for its full value,
+   tighter gap so both boxes stay comfortable on narrow phones */
+.run-meta-row {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 12px;
+}
+
 #run-date {
     min-width: 0;
-    padding: 12px 10px;
+    padding: 12px 8px;
     height: 46px;
+    font-size: 0.95rem;
+    -webkit-appearance: none;
+    appearance: none;
+    overflow: hidden;
+}
+
+/* iOS Safari draws the date value in an inner shadow layer that can spill
+   past a narrow input and paint over the field next to it — pin and clip it */
+#run-date::-webkit-date-and-time-value {
+    margin: 0;
+    text-align: left;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 /* Big, legible distance digits (no steppers — typed once per run) */
