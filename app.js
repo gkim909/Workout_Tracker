@@ -1641,11 +1641,22 @@ function downloadJson(json, filename) {
     URL.revokeObjectURL(url);
 }
 
-function getBackupFilename() {
+function getBackupBaseName() {
     let name = (localStorage.getItem(BACKUP_KEYS.filename) || '').trim();
-    if (!name) name = 'fittrack-backup.json';
-    if (!/\.json$/i.test(name)) name += '.json';
-    return name;
+    name = name.replace(/\.json$/i, '').trim();
+    return name || 'fittrack-backup';
+}
+
+// Date-stamped: iOS can't let a web app overwrite files in the Files app, so a
+// fixed name just piles up "name 2.json" copies. With the date appended there is
+// at most one file per day and older backups are easy to spot and delete.
+function getBackupFilename() {
+    return `${getBackupBaseName()}-${new Date().toLocaleDateString('en-CA')}.json`;
+}
+
+function updateBackupFilenamePreview() {
+    const preview = document.getElementById('backup-filename-preview');
+    if (preview) preview.textContent = getBackupFilename();
 }
 
 function isBackupReminderEnabled() {
@@ -1828,10 +1839,11 @@ function initBackup() {
     }
 
     if (filenameInput) {
-        filenameInput.value = getBackupFilename();
+        filenameInput.value = getBackupBaseName();
         filenameInput.addEventListener('change', () => {
             localStorage.setItem(BACKUP_KEYS.filename, filenameInput.value.trim());
-            filenameInput.value = getBackupFilename(); // normalize (default + .json)
+            filenameInput.value = getBackupBaseName(); // normalize (default, no .json)
+            updateBackupFilenamePreview();
         });
     }
 
@@ -1844,6 +1856,7 @@ function initBackup() {
     if (resetCacheBtn) resetCacheBtn.addEventListener('click', resetPwaCacheOnly);
 
     updateBackupStatusUI();
+    updateBackupFilenamePreview();
 }
 
 // ===== Exercise Management: rename + statistics (Settings) =====

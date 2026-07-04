@@ -7,9 +7,9 @@
     <title>FitTrack | Premium Workout Tracker</title>
 
     <!-- PWA Manifest (?v= busts stale manifest/icon caches on iOS after a deploy) -->
-    <link rel="manifest" href="manifest.json?v=v1.30">
+    <link rel="manifest" href="manifest.json?v=v1.31">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.30">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.31">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -472,12 +472,13 @@
                             </label>
 
                             <label for="backup-filename">Backup file name</label>
-                            <input type="text" id="backup-filename" placeholder="fittrack-backup.json"
+                            <input type="text" id="backup-filename" placeholder="fittrack-backup"
                                 autocomplete="off" style="margin-bottom: 8px;">
-                            <p class="backup-hint">Tip: the first time, tap <strong>Back up</strong> &rarr; <strong>Save
-                                to Files</strong> &rarr; a folder named <strong>workouts</strong>. iOS remembers that
-                                folder, and the fixed file name replaces the previous backup instead of piling up
-                                copies.</p>
+                            <p class="backup-hint">Today's date is added automatically &mdash; e.g.
+                                <strong id="backup-filename-preview">fittrack-backup-2026-01-01.json</strong> &mdash;
+                                so backups never overwrite each other and you get at most one file per day. When saving,
+                                pick the same folder (e.g. <strong>workouts</strong>) and delete older dates in the
+                                Files app whenever you like.</p>
 
                             <button id="backup-now" class="btn-secondary" style="width: 100%; margin-bottom: 15px;">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Back up now
@@ -516,14 +517,14 @@
                             </button>
                             <p class="backup-hint">Fixes stuck updates / refresh-crash issues by clearing cached app
                                 files and reloading. Your workouts, notes, and settings are kept.</p>
-                            <p class="backup-status">App version: v1.30</p>
+                            <p class="backup-status">App version: v1.31</p>
                         </div>
                     </div>
                 </section>
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.30
+            v1.31
         </footer>
     </div>
 

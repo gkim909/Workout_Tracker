@@ -1,6 +1,6 @@
 // Bump APP_VERSION on EVERY deploy. A new version = a new cache that replaces the
 // old one on activate, so iPhone home-screen installs can't get stuck on stale files.
-const APP_VERSION = 'v1.30';
+const APP_VERSION = 'v1.31';
 const CACHE_NAME = 'fittrack-' + APP_VERSION;
 
 // Local app shell — must be cached for the app to work offline.

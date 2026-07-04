@@ -17,6 +17,7 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.31**: Backup files are now date-stamped (e.g. `fittrack-backup-2026-07-05.json`) — iOS won't let a web app overwrite files in the Files app, so a fixed name silently piled up "name 2" copies; the date cap means at most one backup file per day and old dates are easy to spot and delete. The Settings filename field now takes just the base name, with a live preview of today's full filename.
 - **v1.30**: Run time is now entered in a single hours : minutes : seconds box (steppers removed — it's typed once per run), runs over an hour display as h:mm:ss, and the pace preview/math accounts for hours.
 - **v1.29**: Added a Running Tracker: a new "Log Running" tab (distance + minutes/seconds steppers with a live min/mi pace preview, and a Last 5 Runs list), a dashboard "Running Pace" graph charting average pace per day (lower = faster) with distance/time tooltips, runs mixed into Recent History under their date, and run days counting toward Workout Streak and Last Workout. Runs are included in backups, import/export, snapshots, and Clear All Data, and Settings statistics now show total runs and miles.
 - **v1.28**: Backup reminder banner now sticks to the top of the screen while scrolling (with a blur backdrop and slide-in animation) and only appears on the first open of a day that has no backup yet — dismissing it with the ✕ keeps it hidden until the next day.
