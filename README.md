@@ -8,6 +8,7 @@ A progressive web app (PWA) for tracking workouts.
 - **Private:** No data is sent to the cloud, ensuring complete privacy.
 - **Installable:** Add to home screen on iOS and Android.
 - **Analytics:** Visualize your progress with charts.
+- **Running Tracker:** Log distance and time (h:m:s), see your pace (min/mi) trend on the dashboard, and runs count toward your workout streak.
 - **Mobile-First:** Optimized for iPhone and touch-only use (no keyboard shortcuts).
 
 ## How to Use
@@ -16,6 +17,9 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.30**: Run time is now entered in a single hours : minutes : seconds box (steppers removed — it's typed once per run), runs over an hour display as h:mm:ss, and the pace preview/math accounts for hours.
+- **v1.29**: Added a Running Tracker: a new "Log Running" tab (distance + minutes/seconds steppers with a live min/mi pace preview, and a Last 5 Runs list), a dashboard "Running Pace" graph charting average pace per day (lower = faster) with distance/time tooltips, runs mixed into Recent History under their date, and run days counting toward Workout Streak and Last Workout. Runs are included in backups, import/export, snapshots, and Clear All Data, and Settings statistics now show total runs and miles.
+- **v1.28**: Backup reminder banner now sticks to the top of the screen while scrolling (with a blur backdrop and slide-in animation) and only appears on the first open of a day that has no backup yet — dismissing it with the ✕ keeps it hidden until the next day.
 - **v1.27**: Added per-set & session notes (with inline history views), a Recent History 7/30-day filter, supersets now logged as regular sets (counted in averages) with a partner-stats bullet, swapped Reps/Weight input positions, and new Backup tools (one-tap share-sheet export with a fixed filename, a daily reminder banner, and an on-device snapshot + restore). Hardened the iOS home-screen PWA against stale-cache/refresh-crash issues: versioned service-worker cache with old-cache cleanup, `skipWaiting`/`clients.claim`, a network-first app shell, versioned manifest/icon references, and a "Reset app cache" tool in Settings. Added Settings tools to rename an exercise across all records (with merge) and a simple statistics breakdown (sets per exercise, sessions, and totals). Reduced the theme set to Glacial Flux and Ballerina (retired Neumorphism and Pixel Art, with automatic migration of saved themes), fixed a crash in "Clear All Data" (undeclared `intensityChartInstance`), and removed dead code/CSS.
 - **v1.26**: Renamed Glassmorphism to Glacial Flux and updated the palette.
 - **v1.25**: Added a dropdown for superset exercise selection, updated superset labels, and refined Ballerina dropdown styling.

@@ -1,8 +1,9 @@
 const DB_NAME = 'WorkoutTrackerDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'workouts';
 const DAYNOTES_STORE = 'dayNotes';
 const SNAPSHOTS_STORE = 'snapshots';
+const RUNS_STORE = 'runs';
 
 const dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -19,6 +20,10 @@ const dbPromise = new Promise((resolve, reject) => {
         // v3: on-device backup snapshot(s), keyed by id (we keep 'latest')
         if (!db.objectStoreNames.contains(SNAPSHOTS_STORE)) {
             db.createObjectStore(SNAPSHOTS_STORE, { keyPath: 'id' });
+        }
+        // v4: running log — { id, date, distanceMiles, durationSeconds }
+        if (!db.objectStoreNames.contains(RUNS_STORE)) {
+            db.createObjectStore(RUNS_STORE, { keyPath: 'id' });
         }
     };
 
@@ -169,6 +174,81 @@ const db = {
             transaction.onerror = () => reject(transaction.error);
 
             records.forEach(record => store.put(record));
+        });
+    },
+
+    // --- Running Log ---
+    async getAllRuns() {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readonly');
+            const store = transaction.objectStore(RUNS_STORE);
+            const request = store.getAll();
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async addRun(run) {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readwrite');
+            const store = transaction.objectStore(RUNS_STORE);
+            const request = store.put(run);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async deleteRun(id) {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readwrite');
+            const store = transaction.objectStore(RUNS_STORE);
+            const request = store.delete(id);
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async clearRuns() {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readwrite');
+            const store = transaction.objectStore(RUNS_STORE);
+            const request = store.clear();
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    async bulkAddRuns(records) {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readwrite');
+            const store = transaction.objectStore(RUNS_STORE);
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+
+            records.forEach(record => store.put(record));
+        });
+    },
+
+    async bulkDeleteRuns(ids) {
+        const database = await dbPromise;
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([RUNS_STORE], 'readwrite');
+            const store = transaction.objectStore(RUNS_STORE);
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+
+            ids.forEach(id => store.delete(id));
         });
     },
 

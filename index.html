@@ -7,9 +7,9 @@
     <title>FitTrack | Premium Workout Tracker</title>
 
     <!-- PWA Manifest (?v= busts stale manifest/icon caches on iOS after a deploy) -->
-    <link rel="manifest" href="manifest.json?v=v1.27">
+    <link rel="manifest" href="manifest.json?v=v1.30">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.27">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.30">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -58,6 +58,9 @@
             </button>
             <button class="tab-btn" data-tab="log">
                 <i class="fa-solid fa-plus-circle"></i> Log Workout
+            </button>
+            <button class="tab-btn" data-tab="running">
+                <i class="fa-solid fa-person-running"></i> Log Running
             </button>
             <button class="tab-btn" data-tab="settings">
                 <i class="fa-solid fa-cog"></i> Settings
@@ -132,6 +135,17 @@
                         </div>
                     </section>
                 </div>
+
+                <!-- Running Pace (Full Width; hidden until the first run is logged) -->
+                <section id="running-analytics" class="card analytics-section" style="margin-top: 20px;" hidden>
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-person-running"></i> Running Pace</h2>
+                        <span id="pace-summary" class="pace-summary"></span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="paceChart"></canvas>
+                    </div>
+                </section>
 
                 <!-- Intensity Calendar (Full Width) -->
                 <section class="card analytics-section" style="margin-top: 20px;">
@@ -342,6 +356,65 @@
                 </section>
             </div>
 
+            <!-- Log Running Tab -->
+            <div id="tab-running" class="tab-pane">
+                <section class="card form-section" style="max-width: 600px; margin: 0 auto;">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-person-running"></i> Log Running</h2>
+                    </div>
+                    <form id="run-form">
+                        <div class="form-group">
+                            <label for="run-date">Date</label>
+                            <input type="date" id="run-date" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="run-distance">Distance (miles)</label>
+                            <div class="stepper-control">
+                                <button type="button" class="stepper-btn" onclick="adjustValue('run-distance', -0.25)"><i
+                                        class="fa-solid fa-minus"></i></button>
+                                <input type="number" id="run-distance" placeholder="0.0" min="0" step="0.01" required>
+                                <button type="button" class="stepper-btn" onclick="adjustValue('run-distance', 0.25)"><i
+                                        class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="run-hours">Time (hours : minutes : seconds)</label>
+                            <div class="time-box">
+                                <input type="number" id="run-hours" placeholder="0" min="0" inputmode="numeric"
+                                    aria-label="Hours">
+                                <span class="time-sep">:</span>
+                                <input type="number" id="run-minutes" placeholder="00" min="0" max="59"
+                                    inputmode="numeric" aria-label="Minutes">
+                                <span class="time-sep">:</span>
+                                <input type="number" id="run-seconds" placeholder="00" min="0" max="59"
+                                    inputmode="numeric" aria-label="Seconds">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Pace</label>
+                            <div id="run-pace-preview" class="set-indicator">&mdash; /mi</div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">
+                            <i class="fa-solid fa-save"></i> Save Run
+                        </button>
+                    </form>
+
+                    <!-- Recent Runs -->
+                    <div id="recent-runs"
+                        style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                        <h3 style="font-size: 1rem; color: var(--text-primary); margin-bottom: 15px;"><i
+                                class="fa-solid fa-clock-rotate-left"></i> Last 5 Runs</h3>
+                        <div id="recent-runs-list" class="history-list" style="max-height: 300px;">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+
             <!-- Settings Tab -->
             <div id="tab-settings" class="tab-pane">
                 <section class="card settings-section" style="max-width: 600px; margin: 0 auto;">
@@ -394,7 +467,7 @@
                                 <input type="checkbox" id="backup-reminder-toggle">
                                 <span class="checkbox-copy">
                                     <strong>Daily backup reminder</strong>
-                                    <small>Show a banner once a day until you've backed up</small>
+                                    <small>On the first open each day without a backup, show a dismissible banner</small>
                                 </span>
                             </label>
 
@@ -443,14 +516,14 @@
                             </button>
                             <p class="backup-hint">Fixes stuck updates / refresh-crash issues by clearing cached app
                                 files and reloading. Your workouts, notes, and settings are kept.</p>
-                            <p class="backup-status">App version: v1.27</p>
+                            <p class="backup-status">App version: v1.30</p>
                         </div>
                     </div>
                 </section>
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.27
+            v1.30
         </footer>
     </div>
 

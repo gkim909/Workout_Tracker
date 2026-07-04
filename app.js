@@ -1,8 +1,10 @@
 // State Management
 let workouts = [];
+let runs = []; // { id, date, distanceMiles, durationSeconds }
 let dayNotes = {}; // { 'YYYY-MM-DD': 'session note text' }
 let historyRangeDays = 7; // Recent History window on the Dashboard (7 or 30)
 let chartInstance = null;
+let paceChartInstance = null;
 let currentCalendarDate = new Date(); // For Calendar View
 
 // DOM Elements
@@ -47,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initThemeSwitcher();
     initBackup();
     initExerciseManagement();
+    initRunTracker();
     requestPersistentStorage();
 
     // Set default date to today (Local Time)
@@ -54,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // en-CA locale formats as YYYY-MM-DD which matches input type="date"
     const localDate = today.toLocaleDateString('en-CA');
     dateInput.value = localDate;
+    const runDateInput = document.getElementById('run-date');
+    if (runDateInput) runDateInput.value = localDate;
 
     // Initialize DB and load workouts
     loadWorkouts();
@@ -80,6 +85,7 @@ function initThemeSwitcher() {
         if (chartFilter.value) {
             renderChart(chartFilter.value);
         }
+        renderPaceChart(); // re-pick theme colors
     });
 }
 
@@ -182,11 +188,13 @@ workoutForm.addEventListener('submit', (e) => {
 });
 
 clearHistoryBtn.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear all workout history? This cannot be undone.')) {
+    if (confirm('Are you sure you want to clear all workout and running history? This cannot be undone.')) {
         workouts = [];
+        runs = [];
         dayNotes = {};
-        Promise.all([db.clearStore(), db.clearDayNotes()]).then(() => {
+        Promise.all([db.clearStore(), db.clearRuns(), db.clearDayNotes()]).then(() => {
             updateUI();
+            updateRunUI();
             if (chartInstance) {
                 chartInstance.destroy();
                 chartInstance = null;
@@ -547,23 +555,25 @@ window.deleteWorkout = function (id) {
 };
 
 window.deleteDateGroup = function (dateKey) {
-    if (confirm(`Delete all workouts for ${dateKey}?`)) {
-        // Find workouts to delete
-        const toDelete = workouts.filter(w => {
-            const wDateKey = new Date(w.date).toLocaleDateString(undefined, {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            });
-            return wDateKey === dateKey;
-        });
+    if (confirm(`Delete everything logged for ${dateKey}?`)) {
+        // Find workouts and runs to delete
+        const toDelete = workouts.filter(w => historyDateKey(w.date) === dateKey);
+        const runsToDelete = runs.filter(r => historyDateKey(r.date) === dateKey);
 
         const ids = toDelete.map(w => w.id);
+        const runIds = runsToDelete.map(r => r.id);
 
         // Update local state
         workouts = workouts.filter(w => !ids.includes(w.id));
+        runs = runs.filter(r => !runIds.includes(r.id));
 
         // Update DB
-        db.bulkDelete(ids).then(() => {
+        const tasks = [];
+        if (ids.length) tasks.push(db.bulkDelete(ids));
+        if (runIds.length) tasks.push(db.bulkDeleteRuns(runIds));
+        Promise.all(tasks).then(() => {
             updateUI();
+            updateRunUI();
             updateSetIndicator();
             if (chartFilter.value) renderChart(chartFilter.value);
             renderCalendar();
@@ -607,11 +617,13 @@ window.adjustValue = function (id, amount) {
     // Validation
     if (id === 'reps') {
         if (val < 1) val = 1;
-    } else if (id === 'weight') {
-        if (val < 0) val = 0;
+    } else if (val < 0) {
+        val = 0;
     }
 
-    input.value = val;
+    input.value = Math.round(val * 100) / 100; // avoid float drift on 0.25 steps
+
+    if (id.startsWith('run-')) updatePacePreview();
 };
 
 // Core Functions
@@ -630,21 +642,23 @@ async function loadWorkouts() {
         }
 
         workouts = await db.getAllWorkouts();
+        runs = await db.getAllRuns();
 
         const storedNotes = await db.getAllDayNotes();
         dayNotes = {};
         storedNotes.forEach(n => { dayNotes[n.date] = n.note; });
 
         sortWorkouts();
-        sortWorkouts();
+        sortRuns();
         updateUI();
+        updateRunUI();
         updateChartOptions();
         renderCalendar();
         loadSessionNoteForDate();
 
         // Keep the on-device snapshot fresh (only when we actually have data, so an
         // accidental "Clear all" can't overwrite a good snapshot with an empty one)
-        if (workouts.length > 0) {
+        if (workouts.length > 0 || runs.length > 0) {
             saveLocalSnapshot();
         }
         updateBackupStatusUI();
@@ -1013,10 +1027,16 @@ function renderExerciseHistory() {
     container.innerHTML = html;
 }
 
+function historyDateKey(dateLike) {
+    return new Date(dateLike).toLocaleDateString(undefined, {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+}
+
 function renderHistory() {
     historyList.innerHTML = '';
 
-    if (workouts.length === 0) {
+    if (workouts.length === 0 && runs.length === 0) {
         historyList.innerHTML = `
             <div class="empty-state">
                 <p>No workouts logged yet. Start training!</p>
@@ -1025,13 +1045,14 @@ function renderHistory() {
         return;
     }
 
-    // Only render workouts within the selected window so the DOM stays light as data grows
+    // Only render entries within the selected window so the DOM stays light as data grows
     const cutoff = new Date();
     cutoff.setHours(0, 0, 0, 0);
     cutoff.setDate(cutoff.getDate() - (historyRangeDays - 1));
     const inRange = workouts.filter(w => new Date(w.date) >= cutoff);
+    const runsInRange = runs.filter(r => new Date(r.date) >= cutoff);
 
-    if (inRange.length === 0) {
+    if (inRange.length === 0 && runsInRange.length === 0) {
         historyList.innerHTML = `
             <div class="empty-state">
                 <p>No workouts in the last ${historyRangeDays} days.</p>
@@ -1040,17 +1061,25 @@ function renderHistory() {
         return;
     }
 
-    // Group by Date
+    // Group lifts and runs by date, keeping the dates in newest-first order
     const groupedByDate = {};
-    inRange.forEach(workout => {
-        const dateKey = new Date(workout.date).toLocaleDateString(undefined, {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    const dateOrder = [];
+    [...inRange, ...runsInRange]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .forEach(item => {
+            const dateKey = historyDateKey(item.date);
+            if (!groupedByDate[dateKey]) {
+                groupedByDate[dateKey] = { workouts: [], runs: [], sample: item };
+                dateOrder.push(dateKey);
+            }
         });
-        if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-        groupedByDate[dateKey].push(workout);
-    });
+    inRange.forEach(w => groupedByDate[historyDateKey(w.date)].workouts.push(w));
+    runsInRange.forEach(r => groupedByDate[historyDateKey(r.date)].runs.push(r));
 
-    Object.keys(groupedByDate).forEach(date => {
+    dateOrder.forEach(date => {
+        const dayWorkouts = groupedByDate[date].workouts;
+        const dayRuns = groupedByDate[date].runs;
+
         const dateGroup = document.createElement('div');
         dateGroup.className = 'history-date-group';
 
@@ -1060,29 +1089,34 @@ function renderHistory() {
         dateHeader.style.justifyContent = 'space-between';
         dateHeader.style.alignItems = 'center';
 
-        // Calculate Average Intensity for Date
-        const totalIntensity = groupedByDate[date].reduce((sum, w) => sum + (w.intensity || 0), 0);
-        const avgIntensity = (totalIntensity / groupedByDate[date].length).toFixed(1);
-        const avgColor = getIntensityColor(parseFloat(avgIntensity));
+        // Average Intensity for the date (lifting sets only — runs carry no intensity)
+        let intensityBadge = '';
+        if (dayWorkouts.length > 0) {
+            const totalIntensity = dayWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0);
+            const avgIntensity = (totalIntensity / dayWorkouts.length).toFixed(1);
+            const avgColor = getIntensityColor(parseFloat(avgIntensity));
+            intensityBadge = `
+                <span style="font-size: 0.8rem; font-weight: 600; color: ${avgColor}; display: flex; align-items: center; gap: 4px;">
+                    <i class="fa-solid fa-fire"></i> ${avgIntensity}
+                </span>`;
+        }
 
         dateHeader.innerHTML = `
             <span>${date}</span>
             <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="font-size: 0.8rem; font-weight: 600; color: ${avgColor}; display: flex; align-items: center; gap: 4px;">
-                    <i class="fa-solid fa-fire"></i> ${avgIntensity}
-                </span>
+                ${intensityBadge}
                 <button class="delete-btn" onclick="deleteDateGroup('${date}')" title="Delete All for Date">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
         `;
         dateGroup.appendChild(dateHeader);
-        dateGroup.insertAdjacentHTML('beforeend', sessionNoteLineHTML(dayNotes[localDateKey(groupedByDate[date][0].date)]));
+        dateGroup.insertAdjacentHTML('beforeend', sessionNoteLineHTML(dayNotes[localDateKey(groupedByDate[date].sample.date)]));
 
         // Group ALL sets by Exercise within the date — supersets are treated as regular sets
-        const supersetPartners = buildSupersetPartners(groupedByDate[date]);
+        const supersetPartners = buildSupersetPartners(dayWorkouts);
         const exercisesInDate = {};
-        groupedByDate[date].forEach(workout => {
+        dayWorkouts.forEach(workout => {
             if (!exercisesInDate[workout.exercise]) exercisesInDate[workout.exercise] = [];
             exercisesInDate[workout.exercise].push(workout);
         });
@@ -1151,6 +1185,41 @@ function renderHistory() {
             dateGroup.appendChild(exerciseGroup);
         });
 
+        // Runs for the date, styled like an exercise group
+        if (dayRuns.length > 0) {
+            const runGroup = document.createElement('div');
+            runGroup.className = 'history-exercise-group';
+            runGroup.innerHTML = `
+                <div class="history-exercise-header">
+                    <h4><i class="fa-solid fa-person-running"></i> Running</h4>
+                </div>
+            `;
+
+            const runList = document.createElement('div');
+            runList.className = 'history-set-list';
+
+            dayRuns.sort((a, b) => b.id - a.id).forEach(run => {
+                const runItem = document.createElement('div');
+                runItem.className = 'history-set-item';
+                runItem.innerHTML = `
+                    <div class="set-details">
+                        <span><i class="fa-solid fa-route"></i> ${run.distanceMiles} mi</span>
+                        <span><i class="fa-solid fa-stopwatch"></i> ${formatDuration(run.durationSeconds)}</span>
+                    </div>
+                    <div class="set-meta">
+                        <span class="run-pace" style="margin-right: 5px;">${formatPace(runPaceSeconds(run))} /mi</span>
+                        <button class="delete-btn" onclick="deleteRun(${run.id})" title="Delete Run">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                runList.appendChild(runItem);
+            });
+
+            runGroup.appendChild(runList);
+            dateGroup.appendChild(runGroup);
+        }
+
         historyList.appendChild(dateGroup);
     });
 }
@@ -1161,9 +1230,11 @@ function updateSummary() {
     longestStreakEl.textContent = `${streaks.longest} Days`;
     currentStreakEl.textContent = `${streaks.current} Days`;
 
-    if (workouts.length > 0) {
+    // Runs count as workouts for "Last Workout"
+    const allActivity = [...workouts, ...runs];
+    if (allActivity.length > 0) {
         // Sort by date descending to get the latest
-        const sortedByDate = [...workouts].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sortedByDate = allActivity.sort((a, b) => new Date(b.date) - new Date(a.date));
         const lastDate = new Date(sortedByDate[0].date);
         lastWorkoutDateEl.textContent = lastDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     } else {
@@ -1172,10 +1243,11 @@ function updateSummary() {
 }
 
 function calculateStreaks() {
-    if (workouts.length === 0) return { current: 0, longest: 0 };
+    // A day counts toward the streak if anything was logged — lifting or running
+    if (workouts.length === 0 && runs.length === 0) return { current: 0, longest: 0 };
 
     // Get unique dates, sorted ascending
-    const uniqueDates = [...new Set(workouts.map(w => new Date(w.date).toISOString().split('T')[0]))].sort();
+    const uniqueDates = [...new Set([...workouts, ...runs].map(w => new Date(w.date).toISOString().split('T')[0]))].sort();
 
     if (uniqueDates.length === 0) return { current: 0, longest: 0 };
 
@@ -1481,9 +1553,10 @@ function importWorkouts(event) {
         try {
             const parsed = JSON.parse(e.target.result);
 
-            // Support both the legacy array format and the new { workouts, dayNotes } object
+            // Support both the legacy array format and the new { workouts, runs, dayNotes } object
             const importedWorkouts = Array.isArray(parsed) ? parsed : parsed.workouts;
             const importedDayNotes = (!Array.isArray(parsed) && Array.isArray(parsed.dayNotes)) ? parsed.dayNotes : [];
+            const importedRuns = (!Array.isArray(parsed) && Array.isArray(parsed.runs)) ? parsed.runs : [];
 
             if (!Array.isArray(importedWorkouts)) throw new Error('Invalid format');
 
@@ -1491,33 +1564,42 @@ function importWorkouts(event) {
             const existingIds = new Set(workouts.map(w => w.id));
             const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
 
+            // Merge runs the same way
+            const existingRunIds = new Set(runs.map(r => r.id));
+            const newRuns = importedRuns.filter(r => !existingRunIds.has(r.id));
+
             // Merge day notes: imported notes overwrite by date
             const newDayNotes = importedDayNotes.filter(n => n && n.date && n.note);
             newDayNotes.forEach(n => { dayNotes[n.date] = n.note; });
 
-            if (newWorkouts.length === 0 && newDayNotes.length === 0) {
+            if (newWorkouts.length === 0 && newRuns.length === 0 && newDayNotes.length === 0) {
                 alert('No new data found to import.');
                 event.target.value = '';
                 return;
             }
 
             newWorkouts.forEach(w => workouts.push(w));
+            newRuns.forEach(r => runs.push(r));
 
             const tasks = [];
             if (newWorkouts.length) tasks.push(db.bulkAdd(newWorkouts));
+            if (newRuns.length) tasks.push(db.bulkAddRuns(newRuns));
             if (newDayNotes.length) tasks.push(db.bulkAddDayNotes(newDayNotes));
 
             Promise.all(tasks).then(() => {
                 sortWorkouts();
+                sortRuns();
                 updateUI();
+                updateRunUI();
                 updateChartOptions();
                 renderCalendar();
                 loadSessionNoteForDate();
 
                 const parts = [];
                 if (newWorkouts.length) parts.push(`${newWorkouts.length} workouts`);
+                if (newRuns.length) parts.push(`${newRuns.length} runs`);
                 if (newDayNotes.length) parts.push(`${newDayNotes.length} session notes`);
-                alert(`Successfully imported ${parts.join(' and ')}.`);
+                alert(`Successfully imported ${parts.join(', ')}.`);
             });
         } catch (err) {
             alert('Error importing file: ' + err.message);
@@ -1534,7 +1616,7 @@ const BACKUP_KEYS = {
     reminder: 'fittrack-backup-reminder',
     filename: 'fittrack-backup-filename',
     lastBackup: 'fittrack-last-backup-iso',
-    dismissed: 'fittrack-backup-dismissed-date'
+    shownDate: 'fittrack-backup-banner-shown-date'
 };
 
 const backupBanner = document.getElementById('backup-banner');
@@ -1542,6 +1624,7 @@ const backupBanner = document.getElementById('backup-banner');
 function buildExportPayload() {
     return {
         workouts,
+        runs,
         dayNotes: Object.entries(dayNotes).map(([date, note]) => ({ date, note }))
     };
 }
@@ -1638,30 +1721,41 @@ async function restoreLocalSnapshot() {
 
     const data = snap.data;
     const importedWorkouts = Array.isArray(data.workouts) ? data.workouts : [];
+    const importedRuns = Array.isArray(data.runs) ? data.runs : [];
     const importedDayNotes = Array.isArray(data.dayNotes) ? data.dayNotes : [];
 
     const existingIds = new Set(workouts.map(w => w.id));
     const newWorkouts = importedWorkouts.filter(w => !existingIds.has(w.id));
     newWorkouts.forEach(w => workouts.push(w));
 
+    const existingRunIds = new Set(runs.map(r => r.id));
+    const newRuns = importedRuns.filter(r => !existingRunIds.has(r.id));
+    newRuns.forEach(r => runs.push(r));
+
     const newDayNotes = importedDayNotes.filter(n => n && n.date && n.note);
     newDayNotes.forEach(n => { dayNotes[n.date] = n.note; });
 
     const tasks = [];
     if (newWorkouts.length) tasks.push(db.bulkAdd(newWorkouts));
+    if (newRuns.length) tasks.push(db.bulkAddRuns(newRuns));
     if (newDayNotes.length) tasks.push(db.bulkAddDayNotes(newDayNotes));
     await Promise.all(tasks);
 
     sortWorkouts();
+    sortRuns();
     updateUI();
+    updateRunUI();
     updateChartOptions();
     renderCalendar();
     loadSessionNoteForDate();
     updateBackupStatusUI();
-    alert(`Restored ${newWorkouts.length} workouts and ${newDayNotes.length} session notes.`);
+    alert(`Restored ${newWorkouts.length} workouts, ${newRuns.length} runs, and ${newDayNotes.length} session notes.`);
 }
 
 // --- Smart daily backup banner ---
+// Shown once per day: on the first open of the app where there is no backup
+// dated today. Closing it (or just opening the app again later) keeps it
+// hidden until the next day.
 function showBackupBanner() {
     if (backupBanner) backupBanner.hidden = false;
 }
@@ -1670,17 +1764,13 @@ function hideBackupBanner() {
     if (backupBanner) backupBanner.hidden = true;
 }
 
-function dismissBackupBannerForToday() {
-    localStorage.setItem(BACKUP_KEYS.dismissed, new Date().toLocaleDateString('en-CA'));
-    hideBackupBanner();
-}
-
 function maybeShowBackupBanner() {
     if (!isBackupReminderEnabled()) return;
-    if (workouts.length === 0) return;                 // nothing to back up yet
+    if (workouts.length === 0 && runs.length === 0) return; // nothing to back up yet
     const today = new Date().toLocaleDateString('en-CA');
     if (getLastBackupDateKey() === today) return;      // already backed up today
-    if (localStorage.getItem(BACKUP_KEYS.dismissed) === today) return; // dismissed today
+    if (localStorage.getItem(BACKUP_KEYS.shownDate) === today) return; // already shown today
+    localStorage.setItem(BACKUP_KEYS.shownDate, today);
     showBackupBanner();
 }
 
@@ -1750,7 +1840,7 @@ function initBackup() {
     if (backupNowBtn) backupNowBtn.addEventListener('click', runBackup);
     if (restoreBtn) restoreBtn.addEventListener('click', restoreLocalSnapshot);
     if (bannerSave) bannerSave.addEventListener('click', runBackup);
-    if (bannerDismiss) bannerDismiss.addEventListener('click', dismissBackupBannerForToday);
+    if (bannerDismiss) bannerDismiss.addEventListener('click', hideBackupBanner);
     if (resetCacheBtn) resetCacheBtn.addEventListener('click', resetPwaCacheOnly);
 
     updateBackupStatusUI();
@@ -1807,9 +1897,13 @@ function renderStats() {
     });
     const names = Object.keys(byExercise);
 
+    const totalMiles = Math.round(runs.reduce((sum, r) => sum + (r.distanceMiles || 0), 0) * 10) / 10;
+
     summary.innerHTML = `
         <div class="stat-pill"><span class="stat-num">${totalSets}</span><span class="stat-label">Total sets</span></div>
         <div class="stat-pill"><span class="stat-num">${names.length}</span><span class="stat-label">Exercises</span></div>
+        <div class="stat-pill"><span class="stat-num">${runs.length}</span><span class="stat-label">Runs</span></div>
+        <div class="stat-pill"><span class="stat-num">${totalMiles}</span><span class="stat-label">Miles run</span></div>
     `;
 
     if (totalSets === 0) {
@@ -1869,6 +1963,252 @@ async function renameExercise() {
 
     newInput.value = '';
     alert(`Renamed "${oldName}" to "${newName}".`);
+}
+
+// ===== Running Tracker =====
+
+function sortRuns() {
+    runs.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateA.getTime() !== dateB.getTime()) return dateB - dateA;
+        return b.id - a.id; // newest first within a date
+    });
+}
+
+function runPaceSeconds(run) {
+    return run.durationSeconds / run.distanceMiles;
+}
+
+// Seconds-per-mile -> "9:32"
+function formatPace(secPerMile) {
+    if (!isFinite(secPerMile) || secPerMile <= 0) return '—';
+    let minutes = Math.floor(secPerMile / 60);
+    let seconds = Math.round(secPerMile % 60);
+    if (seconds === 60) { minutes += 1; seconds = 0; }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+// Total seconds -> "28:45", or "1:15:30" once it crosses an hour
+function formatDuration(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.round(totalSeconds % 60);
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function readRunTimeSeconds() {
+    const hours = parseInt(document.getElementById('run-hours').value) || 0;
+    const minutes = parseInt(document.getElementById('run-minutes').value) || 0;
+    const seconds = parseInt(document.getElementById('run-seconds').value) || 0;
+    return hours * 3600 + minutes * 60 + seconds;
+}
+
+function updatePacePreview() {
+    const preview = document.getElementById('run-pace-preview');
+    if (!preview) return;
+    const distance = parseFloat(document.getElementById('run-distance').value);
+    const total = readRunTimeSeconds();
+
+    preview.textContent = (distance > 0 && total > 0)
+        ? `${formatPace(total / distance)} /mi`
+        : '— /mi';
+}
+
+function updateRunUI() {
+    renderRecentRuns();
+    renderPaceChart();
+    renderStats();
+}
+
+function initRunTracker() {
+    const runForm = document.getElementById('run-form');
+    if (!runForm) return;
+
+    ['run-distance', 'run-hours', 'run-minutes', 'run-seconds'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('input', updatePacePreview);
+    });
+
+    runForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const dateStr = document.getElementById('run-date').value;
+        const distance = parseFloat(document.getElementById('run-distance').value);
+        const durationSeconds = readRunTimeSeconds();
+
+        if (!dateStr || !(distance > 0) || durationSeconds <= 0) {
+            alert('Please enter the distance and how long the run took.');
+            return;
+        }
+
+        const run = {
+            id: Date.now(),
+            distanceMiles: distance,
+            durationSeconds: durationSeconds,
+            date: new Date(dateStr + 'T12:00:00').toISOString()
+        };
+
+        runs.push(run);
+        db.addRun(run).catch(err => console.error(err));
+
+        sortRuns();
+        updateRunUI();
+        updateSummary();
+        renderHistory();
+
+        // Clear for the next entry (date stays put)
+        document.getElementById('run-distance').value = '';
+        document.getElementById('run-hours').value = '';
+        document.getElementById('run-minutes').value = '';
+        document.getElementById('run-seconds').value = '';
+        updatePacePreview();
+    });
+}
+
+window.deleteRun = function (id) {
+    if (!confirm('Delete this run?')) return;
+    runs = runs.filter(r => r.id !== id);
+    db.deleteRun(id).then(() => {
+        updateRunUI();
+        updateSummary();
+        renderHistory();
+    });
+};
+
+function renderRecentRuns() {
+    const list = document.getElementById('recent-runs-list');
+    if (!list) return;
+
+    if (runs.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">No runs logged yet.</p>';
+        return;
+    }
+
+    list.innerHTML = runs.slice(0, 5).map(run => `
+        <div class="run-item">
+            <div class="run-item-main">
+                <span class="run-item-date">${new Date(run.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                <span><i class="fa-solid fa-route"></i> ${run.distanceMiles} mi</span>
+                <span><i class="fa-solid fa-stopwatch"></i> ${formatDuration(run.durationSeconds)}</span>
+            </div>
+            <div class="run-item-meta">
+                <span class="run-pace">${formatPace(runPaceSeconds(run))} /mi</span>
+                <button class="delete-btn" onclick="deleteRun(${run.id})" title="Delete Run">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderPaceChart() {
+    const section = document.getElementById('running-analytics');
+    const canvas = document.getElementById('paceChart');
+    if (!section || !canvas) return;
+
+    section.hidden = runs.length === 0;
+    if (runs.length === 0) {
+        if (paceChartInstance) {
+            paceChartInstance.destroy();
+            paceChartInstance = null;
+        }
+        return;
+    }
+
+    // One point per day (oldest -> newest): average pace across that day's runs
+    const byDay = {};
+    const dayOrder = [];
+    [...runs].sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(run => {
+        const key = localDateKey(run.date);
+        if (!byDay[key]) {
+            byDay[key] = { miles: 0, seconds: 0, date: new Date(run.date) };
+            dayOrder.push(key);
+        }
+        byDay[key].miles += run.distanceMiles;
+        byDay[key].seconds += run.durationSeconds;
+    });
+
+    const labels = [];
+    const points = [];
+    dayOrder.forEach(key => {
+        const day = byDay[key];
+        const label = day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        labels.push(label);
+        points.push({
+            x: label,
+            y: day.seconds / day.miles,
+            miles: Math.round(day.miles * 100) / 100,
+            seconds: day.seconds
+        });
+    });
+
+    const latest = points[points.length - 1];
+    const summaryEl = document.getElementById('pace-summary');
+    if (summaryEl) summaryEl.innerHTML = `Latest: <strong>${formatPace(latest.y)} /mi</strong>`;
+
+    if (paceChartInstance) {
+        paceChartInstance.destroy();
+    }
+
+    const themeColors = getThemeChartColors();
+    const ctx = canvas.getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, themeColors.fill);
+    gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+    paceChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Avg Pace (min/mi) — lower is faster',
+                data: points,
+                borderColor: themeColors.primary,
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointBackgroundColor: themeColors.primary,
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: themeColors.primary,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: themeColors.text }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => ` ${formatPace(context.raw.y)} /mi`,
+                        afterLabel: (context) => `${context.raw.miles} mi in ${formatDuration(context.raw.seconds)}`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: themeColors.grid },
+                    ticks: {
+                        color: themeColors.text,
+                        callback: (value) => formatPace(value)
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: themeColors.text }
+                }
+            }
+        }
+    });
 }
 
 // Combobox Functions

@@ -111,7 +111,7 @@ header {
     bottom: calc(14px + env(safe-area-inset-bottom));
     z-index: 1000;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     width: calc(100% - 24px);
     max-width: 430px;
@@ -1393,6 +1393,10 @@ body[data-theme="ballerina"] #calendar-month-picker {
 /* ============================= */
 
 .backup-banner {
+    /* Sticks to the top of the viewport while the page scrolls */
+    position: sticky;
+    top: calc(8px + env(safe-area-inset-top));
+    z-index: 900; /* above cards, below the bottom nav (1000) */
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1403,7 +1407,10 @@ body[data-theme="ballerina"] #calendar-month-picker {
     border-radius: var(--radius-md);
     background: var(--bg-card);
     box-shadow: var(--shadow-card);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
     font-size: 0.85rem;
+    animation: slideIn 0.3s ease-out;
 }
 
 .backup-banner[hidden] {
@@ -1469,11 +1476,139 @@ body[data-theme="ballerina"] #calendar-month-picker {
 }
 
 /* ============================= */
+/* Running Tracker               */
+/* ============================= */
+
+/* One box holding the h : m : s inputs, styled like a single text field */
+.time-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 4px 10px;
+    transition: all 0.2s;
+}
+
+.time-box:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.time-box input,
+body[data-theme="glacial-flux"] .time-box input,
+body[data-theme="ballerina"] .time-box input {
+    width: 3.4em;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 8px 2px;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.time-box input:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
+}
+
+.time-box input::-webkit-outer-spin-button,
+.time-box input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.time-sep {
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+body[data-theme="glacial-flux"] .time-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+body[data-theme="ballerina"] .time-box {
+    background: var(--bg-card);
+    border-color: rgba(255, 241, 245, 0.92);
+    box-shadow: var(--shadow-card);
+}
+
+.run-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+}
+
+.run-item-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.run-item-main i {
+    color: var(--text-secondary);
+    margin-right: 4px;
+    font-size: 0.8rem;
+}
+
+.run-item-date {
+    font-weight: 600;
+    color: var(--accent-primary);
+    min-width: 52px;
+}
+
+.run-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.run-pace {
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.pace-summary {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.pace-summary strong {
+    color: var(--accent-primary);
+}
+
+body[data-theme="ballerina"] .run-item {
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+}
+
+/* ============================= */
 /* Statistics (Settings)         */
 /* ============================= */
 
 .stats-summary {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-bottom: 16px;
 }
