@@ -621,9 +621,7 @@ window.adjustValue = function (id, amount) {
         val = 0;
     }
 
-    input.value = Math.round(val * 100) / 100; // avoid float drift on 0.25 steps
-
-    if (id.startsWith('run-')) updatePacePreview();
+    input.value = Math.round(val * 100) / 100; // avoid float drift on fractional steps
 };
 
 // Core Functions

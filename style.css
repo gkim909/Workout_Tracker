@@ -302,7 +302,9 @@ header {
 
 .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0,1fr): stop wide intrinsic widgets (e.g. date inputs) from stealing
+       space and squeezing the other column on narrow phones */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
 }
 
@@ -1508,7 +1510,7 @@ body[data-theme="ballerina"] .time-box input {
     -webkit-backdrop-filter: none;
     padding: 12px 0;
     text-align: center;
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 600;
 }
 
@@ -1528,6 +1530,27 @@ body[data-theme="ballerina"] .time-box input {
     color: var(--text-secondary);
     font-weight: 700;
     font-size: 1rem;
+}
+
+#run-date {
+    min-width: 0;
+    padding: 12px 10px;
+    height: 46px;
+}
+
+/* Big, legible distance digits (no steppers — typed once per run) */
+.run-distance-input {
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    height: 46px; /* match the date input beside it */
+    padding: 8px 10px;
+}
+
+.run-distance-input::-webkit-outer-spin-button,
+.run-distance-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 /* Slim pace readout under the distance/time row */
