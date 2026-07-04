@@ -366,6 +366,29 @@ select:focus {
     box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+/* Log Workout date: a full-width box is huge on iPhone for such a short value —
+   cap it to a compact box, matching the Log Running date treatment */
+#workout-date {
+    max-width: 180px;
+    min-width: 0;
+    height: 46px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    -webkit-appearance: none;
+    appearance: none;
+    overflow: hidden;
+}
+
+/* iOS Safari draws the date value in an inner shadow layer with its own
+   margins — pin it left so it sits like normal input text */
+#workout-date::-webkit-date-and-time-value {
+    margin: 0;
+    text-align: left;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
 .superset-toggle-row {
     margin-top: 4px;
 }
@@ -1420,6 +1443,11 @@ body[data-theme="ballerina"] #calendar-month-picker {
     display: flex;
     align-items: center;
     gap: 8px;
+    /* shrinkable flex item: long text wraps inside the banner instead of
+       pushing the buttons out on narrow phones */
+    flex: 1;
+    min-width: 0;
+    line-height: 1.3;
     color: var(--text-primary);
     font-weight: 600;
 }

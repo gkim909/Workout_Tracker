@@ -17,6 +17,7 @@ A progressive web app (PWA) for tracking workouts.
 3. Open the app and start logging!
 
 ## Version History
+- **v1.33.2**: Log Workout date is now a compact box instead of a full-width bar (matching Log Running), and the daily backup reminder banner now shows every time the app opens or returns to the foreground on a day with no backup — only the ✕ silences it, and only until the next day (previously it appeared once per day even if never dismissed, and iOS resume-from-memory often skipped it entirely).
 - **v1.33**: Log Running layout refinement: Date and Distance share one row (shorter date bar), the h:m:s time box is full width, and distance/time digits are larger and easier to read; removed the distance +/- steppers (typed once per run).
 - **v1.32**: Mobile UI pass: slimmer bottom nav with four even, single-line tabs (Dashboard / Workout / Running / Settings) and reduced height, and a compact Log Running form — Distance and Time (h:m:s) now sit side by side with a slim inline Pace readout instead of a large box.
 - **v1.31**: Backup files are now date-stamped (e.g. `fittrack-backup-2026-07-05.json`) — iOS won't let a web app overwrite files in the Files app, so a fixed name silently piled up "name 2" copies; the date cap means at most one backup file per day and old dates are easy to spot and delete. The Settings filename field now takes just the base name, with a live preview of today's full filename.

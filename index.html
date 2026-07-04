@@ -7,9 +7,9 @@
     <title>FitTrack | Premium Workout Tracker</title>
 
     <!-- PWA Manifest (?v= busts stale manifest/icon caches on iOS after a deploy) -->
-    <link rel="manifest" href="manifest.json?v=v1.33.1">
+    <link rel="manifest" href="manifest.json?v=v1.33.2">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.33.1">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.33.2">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,7 +31,7 @@
     <div class="app-container">
         <div id="backup-banner" class="backup-banner" hidden>
             <span class="backup-banner-text">
-                <i class="fa-solid fa-cloud-arrow-up"></i> Back up today's workout data
+                <i class="fa-solid fa-cloud-arrow-up"></i> Back up today's data
             </span>
             <div class="backup-banner-actions">
                 <button type="button" id="backup-banner-save" class="backup-banner-btn">Back up</button>
@@ -465,7 +465,7 @@
                                 <input type="checkbox" id="backup-reminder-toggle">
                                 <span class="checkbox-copy">
                                     <strong>Daily backup reminder</strong>
-                                    <small>On the first open each day without a backup, show a dismissible banner</small>
+                                    <small>Until you back up (or close the banner), remind you every time you open the app that day</small>
                                 </span>
                             </label>
 
@@ -515,14 +515,14 @@
                             </button>
                             <p class="backup-hint">Fixes stuck updates / refresh-crash issues by clearing cached app
                                 files and reloading. Your workouts, notes, and settings are kept.</p>
-                            <p class="backup-status">App version: v1.33.1</p>
+                            <p class="backup-status">App version: v1.33.2</p>
                         </div>
                     </div>
                 </section>
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.33.1
+            v1.33.2
         </footer>
     </div>
 

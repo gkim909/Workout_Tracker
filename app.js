@@ -1614,7 +1614,7 @@ const BACKUP_KEYS = {
     reminder: 'fittrack-backup-reminder',
     filename: 'fittrack-backup-filename',
     lastBackup: 'fittrack-last-backup-iso',
-    shownDate: 'fittrack-backup-banner-shown-date'
+    dismissedDate: 'fittrack-backup-banner-dismissed-date'
 };
 
 const backupBanner = document.getElementById('backup-banner');
@@ -1762,9 +1762,8 @@ async function restoreLocalSnapshot() {
 }
 
 // --- Smart daily backup banner ---
-// Shown once per day: on the first open of the app where there is no backup
-// dated today. Closing it (or just opening the app again later) keeps it
-// hidden until the next day.
+// Shown every time the app opens (or returns to the foreground) on a day with
+// no backup yet. Only the X button silences it, and only until the next day.
 function showBackupBanner() {
     if (backupBanner) backupBanner.hidden = false;
 }
@@ -1778,9 +1777,13 @@ function maybeShowBackupBanner() {
     if (workouts.length === 0 && runs.length === 0) return; // nothing to back up yet
     const today = new Date().toLocaleDateString('en-CA');
     if (getLastBackupDateKey() === today) return;      // already backed up today
-    if (localStorage.getItem(BACKUP_KEYS.shownDate) === today) return; // already shown today
-    localStorage.setItem(BACKUP_KEYS.shownDate, today);
+    if (localStorage.getItem(BACKUP_KEYS.dismissedDate) === today) return; // X'd out today
     showBackupBanner();
+}
+
+function dismissBackupBannerForToday() {
+    localStorage.setItem(BACKUP_KEYS.dismissedDate, new Date().toLocaleDateString('en-CA'));
+    hideBackupBanner();
 }
 
 function updateBackupStatusUI() {
@@ -1850,8 +1853,15 @@ function initBackup() {
     if (backupNowBtn) backupNowBtn.addEventListener('click', runBackup);
     if (restoreBtn) restoreBtn.addEventListener('click', restoreLocalSnapshot);
     if (bannerSave) bannerSave.addEventListener('click', runBackup);
-    if (bannerDismiss) bannerDismiss.addEventListener('click', hideBackupBanner);
+    if (bannerDismiss) bannerDismiss.addEventListener('click', dismissBackupBannerForToday);
     if (resetCacheBtn) resetCacheBtn.addEventListener('click', resetPwaCacheOnly);
+
+    // iOS home-screen apps usually resume from memory instead of reloading, so
+    // re-check when the app returns to the foreground (also catches the day
+    // rolling over while the app stays open)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') maybeShowBackupBanner();
+    });
 
     updateBackupStatusUI();
     updateBackupFilenamePreview();
