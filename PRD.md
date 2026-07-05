@@ -138,7 +138,7 @@ as decided by Glen on 2026-07-04:
 |---|---|---|
 | M0 | PRD, facts verified, Glen's decisions recorded; native folder + setup guide created (`~/Desktop/Claudious/fittrack-native/README.md`) | **done 2026-07-04** |
 | M1 | Scaffold Capacitor project per guide Phase 1 | **done 2026-07-04** — installed and launching on the iPhone |
-| M2 | Code (v1.34): native guards (skip service worker), auto-backup engine + before-clear safety file, Settings status line, no-zoom fix, vendored CDN assets, app icon + `set-icon.sh` | **done 2026-07-05** — verified: 28 Playwright checks (browser, native-stub, WebKit) + simulator build; committed locally, PWA deploy pending Glen's go |
+| M2 | Code (v1.34/v1.34.1): native guards, auto-backup engine + before-clear safety file, no-zoom fix, vendored CDN assets, app icon + `set-icon.sh`, native feel pass (rubber-band scroll, Dynamic Island inset, raised/bigger nav) | **done & deployed 2026-07-05** — 28 Playwright checks + simulator builds; live on GitHub Pages (`.nojekyll` added after a transient Pages deploy failure) |
 | M3 | Rebuild to phone (▶ Run), data migration (export→import), week of side-by-side use | not started |
 | M4 | *(when Glen buys the $99/yr membership)* TestFlight setup — guide Phase 6; also rescues the receipt scanner from weekly expiry | not started |
 
