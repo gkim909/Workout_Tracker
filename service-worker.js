@@ -1,25 +1,27 @@
 // Bump APP_VERSION on EVERY deploy. A new version = a new cache that replaces the
 // old one on activate, so iPhone home-screen installs can't get stuck on stale files.
-const APP_VERSION = 'v1.33.2';
+const APP_VERSION = 'v1.34';
 const CACHE_NAME = 'fittrack-' + APP_VERSION;
 
 // Local app shell — must be cached for the app to work offline.
 // Relative URLs resolve against the SW scope, so this works on GitHub Pages
 // (/Workout_Tracker/) and on localhost without hardcoding a base path.
+// v1.34: fonts/icons/Chart.js are vendored locally (no more CDNs), so the
+// whole app — charts and icons included — works offline.
 const CORE_ASSETS = [
     './',
     './index.html',
     './style.css',
     './app.js',
     './db.js',
-    './manifest.json'
-];
-
-// Third-party assets — cached best-effort (a CDN hiccup must not break install).
-const CDN_ASSETS = [
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.jsdelivr.net/npm/chart.js',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
+    './manifest.json',
+    './vendor/chartjs/chart.umd.js',
+    './vendor/inter/inter.css',
+    './vendor/inter/inter-latin.woff2',
+    './vendor/fontawesome/css/all.min.css',
+    './vendor/fontawesome/webfonts/fa-solid-900.woff2',
+    './vendor/fontawesome/webfonts/fa-regular-400.woff2',
+    './vendor/icons/icon-512.png'
 ];
 
 // Install: pre-cache the shell, bypassing the HTTP cache so GitHub Pages
@@ -28,13 +30,6 @@ self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE_NAME);
         await cache.addAll(CORE_ASSETS.map((url) => new Request(url, { cache: 'reload' })));
-        await Promise.all(CDN_ASSETS.map(async (url) => {
-            try {
-                await cache.add(new Request(url, { cache: 'reload' }));
-            } catch (err) {
-                // Offline/unreachable CDN should not block installation.
-            }
-        }));
         await self.skipWaiting();
     })());
 });

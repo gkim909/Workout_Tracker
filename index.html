@@ -3,24 +3,24 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- maximum-scale/user-scalable stop double-tap & focus zoom in the native
+         WKWebView wrap; iOS Safari ignores them for pinch (accessibility). -->
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FitTrack | Premium Workout Tracker</title>
 
     <!-- PWA Manifest (?v= busts stale manifest/icon caches on iOS after a deploy) -->
-    <link rel="manifest" href="manifest.json?v=v1.33.2">
+    <link rel="manifest" href="manifest.json?v=v1.34">
     <meta name="theme-color" content="#0f172a">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2548/2548533.png?v=v1.33.2">
+    <link rel="icon" type="image/png" href="vendor/icons/icon-512.png?v=v1.34">
+    <link rel="apple-touch-icon" href="vendor/icons/icon-512.png?v=v1.34">
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Fonts, icons, and Chart.js are vendored locally (vendor/) so the app
+         has zero CDN dependencies — required for the native (Capacitor) build
+         to work offline, and makes the PWA immune to CDN outages too. -->
+    <link href="vendor/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+    <script src="vendor/chartjs/chart.umd.js"></script>
 
     <link rel="stylesheet" href="style.css">
 </head>
@@ -474,9 +474,10 @@
                                 autocomplete="off" style="margin-bottom: 8px;">
                             <p class="backup-hint">Today's date is added automatically &mdash; e.g.
                                 <strong id="backup-filename-preview">fittrack-backup-2026-01-01.json</strong> &mdash;
-                                so backups never overwrite each other and you get at most one file per day. When saving,
-                                pick the same folder (e.g. <strong>workouts</strong>) and delete older dates in the
-                                Files app whenever you like.</p>
+                                so backups never overwrite each other and you get at most one file per day. <span
+                                    id="backup-destination-hint">When saving, pick the same folder (e.g.
+                                    <strong>workouts</strong>) and delete older dates in the Files app whenever you
+                                    like.</span></p>
 
                             <button id="backup-now" class="btn-secondary" style="width: 100%; margin-bottom: 15px;">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Back up now
@@ -515,21 +516,26 @@
                             </button>
                             <p class="backup-hint">Fixes stuck updates / refresh-crash issues by clearing cached app
                                 files and reloading. Your workouts, notes, and settings are kept.</p>
-                            <p class="backup-status">App version: v1.33.2</p>
+                            <p class="backup-status">App version: v1.34</p>
                         </div>
                     </div>
                 </section>
             </div>
         </main>
         <footer style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.8rem;">
-            v1.33.2
+            v1.34
         </footer>
     </div>
 
     <script src="db.js"></script>
     <script src="app.js"></script>
     <script>
-        if ('serviceWorker' in navigator) {
+        // The native (Capacitor) build ships its files locally — no service
+        // worker needed there, and registering one would only add a stale
+        // cache layer between the app and its bundled files.
+        const runningNatively = !!(window.Capacitor && window.Capacitor.isNativePlatform
+            && window.Capacitor.isNativePlatform());
+        if ('serviceWorker' in navigator && !runningNatively) {
             window.addEventListener('load', () => {
                 // updateViaCache:'none' forces the browser to re-check service-worker.js
                 // on every load (not from HTTP cache), so deploys are picked up promptly.

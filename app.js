@@ -48,6 +48,7 @@ const exerciseDropdown = document.getElementById('exercise-dropdown');
 document.addEventListener('DOMContentLoaded', () => {
     initThemeSwitcher();
     initBackup();
+    initNativeBackup();
     initExerciseManagement();
     initRunTracker();
     requestPersistentStorage();
@@ -187,8 +188,9 @@ workoutForm.addEventListener('submit', (e) => {
     resetSetNote(); // Clear the per-set note for the next set
 });
 
-clearHistoryBtn.addEventListener('click', () => {
+clearHistoryBtn.addEventListener('click', async () => {
     if (confirm('Are you sure you want to clear all workout and running history? This cannot be undone.')) {
+        await writeNativeSafetyBackup('before-clear'); // no-op in the browser
         workouts = [];
         runs = [];
         dayNotes = {};
@@ -1539,7 +1541,14 @@ function toTitleCase(str) {
 
 function exportWorkouts() {
     const dataStr = JSON.stringify(buildExportPayload(), null, 2);
-    downloadJson(dataStr, `workouts_${new Date().toISOString().split('T')[0]}.json`);
+    const filename = `workouts_${new Date().toISOString().split('T')[0]}.json`;
+    if (NATIVE) {
+        writeNativeFile(filename, dataStr)
+            .then(() => alert(`Exported to Files → On My iPhone → FitTrack → ${filename}`))
+            .catch((err) => alert('Export failed: ' + err));
+        return;
+    }
+    downloadJson(dataStr, filename);
 }
 
 function importWorkouts(event) {
@@ -1680,6 +1689,16 @@ async function saveLocalSnapshot() {
 }
 
 async function runBackup() {
+    // Native app: backups land straight in the Files app, no share sheet —
+    // the button just forces one immediately.
+    if (NATIVE) {
+        const ok = await runNativeBackup();
+        alert(ok
+            ? `Backed up to Files → On My iPhone → FitTrack → ${getBackupFilename()}`
+            : 'Backup failed — please try again.');
+        return ok;
+    }
+
     const json = JSON.stringify(buildExportPayload(), null, 2);
     const filename = getBackupFilename();
 
@@ -1773,6 +1792,7 @@ function hideBackupBanner() {
 }
 
 function maybeShowBackupBanner() {
+    if (NATIVE) return; // native app backs up automatically — nothing to nag about
     if (!isBackupReminderEnabled()) return;
     if (workouts.length === 0 && runs.length === 0) return; // nothing to back up yet
     const today = new Date().toLocaleDateString('en-CA');
@@ -1790,9 +1810,146 @@ function updateBackupStatusUI() {
     const statusEl = document.getElementById('backup-status');
     if (!statusEl) return;
     const iso = localStorage.getItem(BACKUP_KEYS.lastBackup);
-    statusEl.textContent = iso
-        ? `Last backup: ${new Date(iso).toLocaleString()}`
-        : 'Last backup: never';
+    const when = iso ? new Date(iso).toLocaleString() : 'never';
+    statusEl.textContent = NATIVE
+        ? `Backs up automatically — last: ${when} → Files › FitTrack`
+        : `Last backup: ${when}`;
+}
+
+// ===== Native app (Capacitor) auto-backup =====
+// The same code base also ships inside a native iOS shell (see PRD.md and
+// ~/Desktop/Claudious/fittrack-native). There the Filesystem bridge can write
+// files silently, so backups need zero taps: every data change is followed by
+// a date-stamped JSON written to the app's Documents folder, which shows up
+// in the Files app under On My iPhone → FitTrack. In the browser/PWA, NATIVE
+// is false and all of this is inert.
+
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform
+    && window.Capacitor.isNativePlatform());
+const NATIVE_BACKUPS_KEPT = 30; // dated files kept before pruning the oldest
+let nativeBackupTimer = null;
+let nativeBackupDirty = false;
+
+function writeNativeFile(path, data) {
+    return window.Capacitor.Plugins.Filesystem.writeFile({
+        path,
+        data,
+        directory: 'DOCUMENTS',
+        encoding: 'utf8'
+    });
+}
+
+function initNativeBackup() {
+    if (!NATIVE) return;
+
+    // Wrapping db's mutating methods catches every write path — saves,
+    // deletes, imports, renames, restores — now and in future features.
+    // The clear* methods are deliberately excluded: after Clear All Data the
+    // 'before-clear' safety file must remain the freshest copy of the data.
+    [
+        'addWorkout', 'deleteWorkout', 'bulkAdd', 'bulkDelete',
+        'putDayNote', 'deleteDayNote', 'bulkAddDayNotes',
+        'addRun', 'deleteRun', 'bulkAddRuns', 'bulkDeleteRuns'
+    ].forEach((name) => {
+        const original = db[name].bind(db);
+        db[name] = async (...args) => {
+            const result = await original(...args);
+            scheduleNativeBackup();
+            return result;
+        };
+    });
+
+    // Flush a pending backup when the app is backgrounded, and catch up on a
+    // new day's file when it returns to the foreground.
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden' && nativeBackupDirty) {
+            runNativeBackup();
+        } else if (document.visibilityState === 'visible') {
+            nativeDailyCatchUp();
+        }
+    });
+    // Give loadWorkouts a moment to populate state, then do the daily check.
+    setTimeout(nativeDailyCatchUp, 3000);
+
+    // Settings copy: reminders don't exist natively and the destination is
+    // fixed, so hide the reminder toggle and retarget the hint text.
+    const reminderLabel = document.querySelector('label[for="backup-reminder-toggle"]');
+    if (reminderLabel) reminderLabel.hidden = true;
+    const destinationHint = document.getElementById('backup-destination-hint');
+    if (destinationHint) {
+        destinationHint.textContent = 'Backups happen automatically after every change and land in '
+            + 'the Files app under On My iPhone → FitTrack. The newest '
+            + NATIVE_BACKUPS_KEPT + ' days are kept.';
+    }
+    updateBackupStatusUI();
+}
+
+function scheduleNativeBackup() {
+    if (!NATIVE) return;
+    nativeBackupDirty = true;
+    clearTimeout(nativeBackupTimer);
+    nativeBackupTimer = setTimeout(runNativeBackup, 4000);
+}
+
+// A backup only matters when data changed, and data only changes while the
+// app is open — so "daily" means: the first use of the app each day writes
+// that day's file, even if the last change happened just before midnight.
+function nativeDailyCatchUp() {
+    if (!NATIVE) return;
+    if (workouts.length === 0 && runs.length === 0) return; // nothing to back up
+    const today = new Date().toLocaleDateString('en-CA');
+    if (getLastBackupDateKey() !== today) runNativeBackup();
+}
+
+async function runNativeBackup() {
+    if (!NATIVE) return false;
+    clearTimeout(nativeBackupTimer);
+    nativeBackupDirty = false;
+    try {
+        const json = JSON.stringify(buildExportPayload(), null, 2);
+        await writeNativeFile(getBackupFilename(), json);
+        await saveLocalSnapshot(); // keep the fast in-app restore point in sync
+        markBackedUpToday();
+        updateBackupStatusUI();
+        pruneNativeBackups().catch(() => {});
+        return true;
+    } catch (err) {
+        console.error('Auto-backup failed:', err);
+        nativeBackupDirty = true; // retry on the next change/foreground
+        return false;
+    }
+}
+
+// Written right before destructive actions, with a full timestamp so the
+// daily backup never overwrites it and the pruner (which only touches
+// date-suffixed files) never deletes it.
+async function writeNativeSafetyBackup(reason) {
+    if (!NATIVE) return;
+    if (workouts.length === 0 && runs.length === 0) return;
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    try {
+        await writeNativeFile(
+            `${getBackupBaseName()}-${reason}-${stamp}.json`,
+            JSON.stringify(buildExportPayload(), null, 2)
+        );
+    } catch (err) {
+        console.error('Safety backup failed:', err);
+    }
+}
+
+async function pruneNativeBackups() {
+    const result = await window.Capacitor.Plugins.Filesystem.readdir({
+        path: '',
+        directory: 'DOCUMENTS'
+    });
+    const names = (result.files || []).map((f) => (typeof f === 'string' ? f : f.name));
+    // Only daily date-suffixed files are pruned (the YYYY-MM-DD suffix sorts
+    // chronologically); safety backups and exports are left alone.
+    const dated = names.filter((n) => /-\d{4}-\d{2}-\d{2}\.json$/.test(n)).sort();
+    const excess = dated.slice(0, Math.max(0, dated.length - NATIVE_BACKUPS_KEPT));
+    for (const name of excess) {
+        await window.Capacitor.Plugins.Filesystem.deleteFile({ path: name, directory: 'DOCUMENTS' });
+    }
 }
 
 function requestPersistentStorage() {
