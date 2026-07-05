@@ -92,6 +92,10 @@ function initThemeSwitcher() {
 
 function applyTheme(theme) {
     document.body.dataset.theme = theme;
+    // Paint the root element to match: iOS rubber-band overscroll reveals the
+    // root background beyond the page edges, and an unpainted root flashes
+    // white/black there instead of the theme color.
+    document.documentElement.style.backgroundColor = getComputedStyle(document.body).backgroundColor;
 }
 
 function getThemeChartColors() {

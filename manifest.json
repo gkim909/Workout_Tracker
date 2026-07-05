@@ -1,7 +1,7 @@
 {
     "name": "FitTrack Workout Tracker",
     "short_name": "FitTrack",
-    "start_url": "./index.html?v=v1.34",
+    "start_url": "./index.html?v=v1.34.1",
     "scope": "./",
     "display": "standalone",
     "background_color": "#0f172a",
@@ -9,13 +9,13 @@
     "orientation": "portrait",
     "icons": [
         {
-            "src": "vendor/icons/icon-512.png?v=v1.34",
+            "src": "vendor/icons/icon-512.png?v=v1.34.1",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "vendor/icons/icon-512.png?v=v1.34",
+            "src": "vendor/icons/icon-512.png?v=v1.34.1",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any"

@@ -54,12 +54,15 @@ body {
 .app-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px 20px calc(84px + env(safe-area-inset-bottom));
+    /* Top inset keeps the header clear of the Dynamic Island / notch
+       (viewport-fit=cover extends the page underneath it); bottom clearance
+       covers the floating nav at its raised position. */
+    padding: calc(20px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 480px) {
     .app-container {
-        padding: 10px 10px calc(84px + env(safe-area-inset-bottom));
+        padding: calc(12px + env(safe-area-inset-top)) 10px calc(104px + env(safe-area-inset-bottom));
     }
 }
 
@@ -110,14 +113,14 @@ header {
 .tab-nav {
     position: fixed;
     left: 50%;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    bottom: calc(18px + env(safe-area-inset-bottom));
     z-index: 1000;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     width: calc(100% - 24px);
     max-width: 430px;
-    padding: 5px;
+    padding: 6px;
     margin: 0;
     overflow: hidden;
     transform: translateX(-50%);
@@ -138,10 +141,10 @@ header {
     background: transparent;
     border: none;
     color: var(--text-secondary);
-    min-height: 46px;
-    padding: 5px 2px;
-    border-radius: 17px;
-    font-size: 0.66rem;
+    min-height: 52px;
+    padding: 6px 2px;
+    border-radius: 18px;
+    font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
     transition: color 0.2s, background 0.2s, box-shadow 0.2s;
@@ -149,13 +152,13 @@ header {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
     line-height: 1.1;
     white-space: nowrap;
 }
 
 .tab-btn i {
-    font-size: 1rem;
+    font-size: 1.15rem;
 }
 
 .tab-btn:hover {
